@@ -25,10 +25,12 @@ option(AR_BUILD_WORKLOADS "Build the synthetic benchmark workloads" ON)
 
 # --- core library ------------------------------------------------------------
 # Sources are added phase by phase (see docs/design-draft-v2.md §20).
-# Phase 1 will populate src/image and src/checkpoint.
-add_library(adaptive_restore INTERFACE)
-target_include_directories(adaptive_restore INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_compile_features(adaptive_restore INTERFACE cxx_std_20)
+add_library(adaptive_restore STATIC
+    src/common/crc32c.cpp
+    src/common/sha256.cpp
+)
+target_include_directories(adaptive_restore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_compile_features(adaptive_restore PUBLIC cxx_std_20)
 
 # --- arctl CLI --------------------------------------------------------------
 add_executable(arctl src/cli/main.cpp)

@@ -2,9 +2,19 @@
 # framework dependency yet; add one (Catch2/doctest) when Phase 1 lands real
 # encode/decode logic to test.
 
-add_executable(test_smoke unit/test_smoke.cpp)
-target_link_libraries(test_smoke PRIVATE adaptive_restore)
-add_test(NAME smoke COMMAND test_smoke)
+# Every test: links the core lib, keeps assert() live under any build type,
+# registers with CTest. Extra deps/defs go on the returned test_<name> target.
+function(ar_add_test name)
+    add_executable(test_${name} ${ARGN})
+    target_link_libraries(test_${name} PRIVATE adaptive_restore)
+    target_compile_options(test_${name} PRIVATE -UNDEBUG)
+    add_test(NAME ${name} COMMAND test_${name})
+endfunction()
+
+ar_add_test(smoke unit/test_smoke.cpp)
+ar_add_test(byte_cursor unit/test_byte_cursor.cpp)
+ar_add_test(crc32c unit/test_crc32c.cpp)
+ar_add_test(sha256 unit/test_sha256.cpp)
 
 # arctl should print usage and exit non-zero with no args.
 add_test(NAME arctl_usage COMMAND arctl)
