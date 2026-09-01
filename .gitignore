@@ -1,0 +1,34 @@
+# All markdown docs live in /docs and are intentionally NOT tracked.
+# Only the root README.md is committed.
+/docs/
+
+# Build output
+/build/
+/build-*/
+*.o
+*.a
+*.so
+*.so.*
+
+# Phase 0 probe binaries (sources are tracked, binaries are not)
+/experiments/phase0/probe_ptrace_regs
+/experiments/phase0/probe_process_vm_readv
+/experiments/phase0/probe_userfaultfd
+/experiments/phase0/probe_aslr
+
+# Benchmark / experiment output
+/experiments/raw/*
+!/experiments/raw/.gitkeep
+
+# Checkpoint images and profile DBs
+*.arimg
+*.arprof
+*.sqlite
+*.sqlite-journal
+
+# Editor / tooling
+compile_commands.json
+.cache/
+.idea/
+.vscode/
+*.swp
