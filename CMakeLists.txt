@@ -28,6 +28,7 @@ option(AR_BUILD_WORKLOADS "Build the synthetic benchmark workloads" ON)
 add_library(adaptive_restore STATIC
     src/common/crc32c.cpp
     src/common/sha256.cpp
+    src/image/image_writer.cpp
 )
 target_include_directories(adaptive_restore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_features(adaptive_restore PUBLIC cxx_std_20)

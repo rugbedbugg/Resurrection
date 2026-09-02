@@ -15,6 +15,7 @@ ar_add_test(smoke unit/test_smoke.cpp)
 ar_add_test(byte_cursor unit/test_byte_cursor.cpp)
 ar_add_test(crc32c unit/test_crc32c.cpp)
 ar_add_test(sha256 unit/test_sha256.cpp)
+ar_add_test(image_roundtrip unit/test_image_roundtrip.cpp)
 
 # arctl should print usage and exit non-zero with no args.
 add_test(NAME arctl_usage COMMAND arctl)
