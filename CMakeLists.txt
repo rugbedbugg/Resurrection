@@ -30,6 +30,7 @@ add_library(adaptive_restore STATIC
     src/common/sha256.cpp
     src/image/image_writer.cpp
     src/image/image_reader.cpp
+    src/checkpoint/maps.cpp
 )
 target_include_directories(adaptive_restore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_features(adaptive_restore PUBLIC cxx_std_20)
