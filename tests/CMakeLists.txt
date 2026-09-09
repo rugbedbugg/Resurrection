@@ -21,6 +21,14 @@ ar_add_test(maps_classify unit/test_maps_classify.cpp)
 ar_add_test(proc_mem unit/test_proc_mem.cpp)
 ar_add_test(fds unit/test_fds.cpp)
 
+# test_spawn launches this helper, so it needs the built path at compile time.
+add_executable(helper_marker_target unit/helper_marker_target.c)
+target_include_directories(helper_marker_target PRIVATE ${CMAKE_SOURCE_DIR}/include)
+
+ar_add_test(spawn unit/test_spawn.cpp)
+target_compile_definitions(test_spawn PRIVATE HELPER_PATH="$<TARGET_FILE:helper_marker_target>")
+add_dependencies(test_spawn helper_marker_target)
+
 # arctl should print usage and exit non-zero with no args.
 add_test(NAME arctl_usage COMMAND arctl)
 set_tests_properties(arctl_usage PROPERTIES WILL_FAIL TRUE)

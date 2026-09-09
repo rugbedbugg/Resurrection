@@ -33,6 +33,7 @@ add_library(adaptive_restore STATIC
     src/checkpoint/maps.cpp
     src/checkpoint/proc_mem.cpp
     src/checkpoint/fds.cpp
+    src/checkpoint/spawn.cpp
 )
 target_include_directories(adaptive_restore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_features(adaptive_restore PUBLIC cxx_std_20)
