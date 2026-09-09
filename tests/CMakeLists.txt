@@ -20,6 +20,8 @@ ar_add_test(image_corruption unit/test_image_corruption.cpp)
 ar_add_test(maps_classify unit/test_maps_classify.cpp)
 ar_add_test(proc_mem unit/test_proc_mem.cpp)
 ar_add_test(fds unit/test_fds.cpp)
+ar_add_test(regions unit/test_regions.cpp)
+ar_add_test(registers unit/test_registers.cpp)
 
 # test_spawn launches this helper, so it needs the built path at compile time.
 add_executable(helper_marker_target unit/helper_marker_target.c)
