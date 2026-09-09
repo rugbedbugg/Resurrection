@@ -19,6 +19,7 @@ ar_add_test(image_roundtrip unit/test_image_roundtrip.cpp)
 ar_add_test(image_corruption unit/test_image_corruption.cpp)
 ar_add_test(maps_classify unit/test_maps_classify.cpp)
 ar_add_test(proc_mem unit/test_proc_mem.cpp)
+ar_add_test(fds unit/test_fds.cpp)
 
 # arctl should print usage and exit non-zero with no args.
 add_test(NAME arctl_usage COMMAND arctl)
