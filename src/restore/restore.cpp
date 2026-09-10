@@ -56,7 +56,8 @@ RestoreSummary restore_image(const image::ImageReader& image, const RestoreOptio
         session = std::make_shared<LazySession>();
         session->uffd = std::make_unique<Userfault>(*target);
         session->provider = std::make_unique<paging::LazyProvider>(image, *session->uffd);
-        session->provider->record_trace(!opts.trace_path.empty());
+        session->provider->record_trace(!opts.trace_path.empty() ||
+                                        !opts.profile_path.empty());
     }
 
     for (std::size_t i = 0; i < regions.size(); ++i) {
@@ -85,6 +86,7 @@ RestoreSummary restore_image(const image::ImageReader& image, const RestoreOptio
 
     out.resume = resume(*target, image);
     out.resume_latency_ns = monotonic_ns() - started;
+    out.actions = std::move(actions);
     if (session) {
         out.lazy = session->provider->stats();
         out.session = std::move(session);

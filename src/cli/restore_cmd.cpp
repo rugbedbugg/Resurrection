@@ -6,7 +6,12 @@
 
 #include "adaptive_restore/cli/commands.hpp"
 #include "adaptive_restore/image/image_reader.hpp"
+#include "adaptive_restore/common/version.hpp"
 #include "adaptive_restore/restore/restore.hpp"
+#ifdef AR_HAVE_SQLITE
+#include "adaptive_restore/profile/profile_store.hpp"
+#include "adaptive_restore/profile/region_profiler.hpp"
+#endif
 
 namespace adaptive_restore::cli {
 
@@ -34,15 +39,18 @@ int cmd_restore(std::span<const std::string_view> args) {
         const std::string_view a = args[i];
         if (a == "--verify") {
             opts.verify = true;
-        } else if (a == "--image" || a == "--policy" || a == "--record-trace") {
+        } else if (a == "--image" || a == "--policy" || a == "--record-trace" ||
+                   a == "--profile") {
             if (i + 1 >= args.size()) return fail(std::string(a) + " needs a value");
             const std::string value(args[++i]);
             if (a == "--image")
                 image_path = value;
             else if (a == "--policy")
                 policy = value;
-            else
+            else if (a == "--record-trace")
                 opts.trace_path = value;
+            else
+                opts.profile_path = value;
         } else {
             return fail("unknown option '" + std::string(a) + "'");
         }
@@ -106,6 +114,22 @@ int cmd_restore(std::span<const std::string_view> args) {
                 std::cout << "  trace      " << s.session->provider->trace().size()
                           << " faults written to " << opts.trace_path << '\n';
             }
+#ifdef AR_HAVE_SQLITE
+            // A lazy restore is the only kind that can teach: every first touch
+            // faults, so its trace is the touched set.
+            if (!opts.profile_path.empty()) {
+                const auto observed = profile::observe_regions(
+                    image, s.session->provider->trace(), s.actions);
+                profile::ProfileKey key;
+                key.image_digest = image.identity_digest();
+                key.region_layout_version = kRegionLayoutVersion;
+                key.feature_schema_version = kFeatureSchemaVersion;
+                auto store = profile::ProfileStore::open(opts.profile_path);
+                store.record(key, observed);
+                std::cout << "  profile    " << observed.size() << " regions recorded ("
+                          << store.restores_recorded(key) << " restores learned)\n";
+            }
+#endif
             st = served.exit_status;
             reaped = served.target_exited;
         }

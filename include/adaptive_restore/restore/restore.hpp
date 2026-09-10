@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "adaptive_restore/restore/address_space.hpp"
 #include "adaptive_restore/restore/page_writer.hpp"
@@ -25,7 +26,8 @@ enum class RestorePolicy {
 struct RestoreOptions {
     bool verify = false;
     RestorePolicy policy = RestorePolicy::Eager;
-    std::string trace_path;  // when set, the demand-fault trace is written here
+    std::string trace_path;    // when set, the demand-fault trace is written here
+    std::string profile_path;  // when set, a lazy restore teaches this profile
     // Scratch area for compel. Kept far from any realistic process layout so it
     // cannot collide with an image; see docs/phase2-spike-report.md.
     std::uint64_t reserve_addr = 0x700000000000ULL;
@@ -40,6 +42,7 @@ struct RestoreSummary {
     PopulateResult pages;
     ResumeResult resume;
     paging::LazyStats lazy;               // zero under RestorePolicy::Eager
+    std::vector<paging::RestoreAction> actions;  // what each region was prepared with
     std::uint64_t regions_eager = 0;
     std::uint64_t regions_lazy = 0;
     std::uint64_t resume_latency_ns = 0;  // invocation to first resumed instruction (§22)

@@ -27,6 +27,7 @@ ar_add_test(calibration unit/test_calibration.cpp)
 
 if(SQLite3Opt_FOUND)
     ar_add_test(profile_store unit/test_profile_store.cpp)
+    ar_add_test(region_profiler unit/test_region_profiler.cpp)
 endif()
 
 if(Compel_FOUND)
