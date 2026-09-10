@@ -8,10 +8,13 @@ working-set prefetch, or lazy paging — instead of applying one strategy to the
 whole process. A low-overhead analytical cost model makes the per-region choice
 and is calibrated against measured I/O and page-fault costs.
 
-**Status:** Phase 2 complete. `arctl checkpoint` captures a stopped
+**Status:** Phase 3 complete. `arctl checkpoint` captures a stopped
 single-threaded target into a verified `.arimg`, `arctl inspect` reads it back,
-and `arctl restore --policy eager` brings the process back and resumes it at the
-saved instruction. Phase 3 (lazy restore via `userfaultfd`) is next.
+and `arctl restore` brings the process back and resumes it at the saved
+instruction under either `--policy eager` (populate everything up front) or
+`--policy lazy` (register anonymous regions with `userfaultfd` and serve pages
+on demand). Phase 4 (static prefetch, region profiler, and the cost-model
+controller) is next.
 
 Restore needs `criu`/`compel` at build time; checkpoint and inspect do not, and
 a build without compel is supported (it simply has no `restore`).
@@ -62,7 +65,12 @@ the snapshot point in the workload with `ar_checkpoint_here()` from
 arctl checkpoint --verify --output run.arimg -- ./build/workloads/workload_mini
 arctl inspect --image run.arimg
 arctl restore --image run.arimg --policy eager --verify
+arctl restore --image run.arimg --policy lazy --record-trace faults.tsv
 ```
+
+Under `--policy lazy`, `arctl` stays alive as the target's page server for as
+long as it runs. `--record-trace` writes one row per demand fault; because every
+first touch faults, that trace is the workload's touched set.
 
 `--verify` re-reads every captured page from the live process and re-checksums
 it against the first pass; a mismatch leaves no image behind. The target's

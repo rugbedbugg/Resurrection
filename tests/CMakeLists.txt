@@ -40,6 +40,13 @@ if(Compel_FOUND)
         MINI_PATH="$<TARGET_FILE:workload_mini>")
     add_dependencies(test_restore_mini_lazy arctl workload_mini)
 
+    # Phase 3 exit gate: lazy must load only what a sparse workload accesses.
+    ar_add_test(restore_sparse integration/test_restore_sparse.cpp)
+    target_compile_definitions(test_restore_sparse PRIVATE
+        ARCTL_PATH="$<TARGET_FILE:arctl>"
+        SPARSE_PATH="$<TARGET_FILE:workload_sparse_random>")
+    add_dependencies(test_restore_sparse arctl workload_sparse_random)
+
     # Phase 2 exit gate: real arctl, real workload, checkpoint then restore.
     ar_add_test(restore_mini integration/test_restore_mini.cpp)
     target_compile_definitions(test_restore_mini PRIVATE
