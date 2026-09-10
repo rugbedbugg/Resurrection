@@ -140,12 +140,21 @@ int main() {
         // make_target_for must give up rather than loop forever.
         bool gave_up = false;
         try {
-            // Claiming a huge span guarantees every stub's TLS collides.
+            // Claim the whole user address space, so no placement can clear it.
+            // An earlier version claimed only 0x7f0000000000-0x800000000000 and
+            // failed about once in fifty: mmap randomisation sometimes puts the
+            // stub's TLS just under that floor (0x7efc25928000 was one), the
+            // image then does not collide, and make_target_for rightly succeeds.
             std::vector<MappingRecord> everything(1);
             everything[0].flags = MappingFlag::Read | MappingFlag::ContentsSaved;
-            everything[0].start_vaddr = 0x7f0000000000ULL;
-            everything[0].end_vaddr = 0x800000000000ULL;
-            make_target_for(everything, kReserve, kReserveBytes, 3);
+            everything[0].start_vaddr = 0x1000ULL;
+            everything[0].end_vaddr = 0x7ffffffff000ULL;
+            auto stray = make_target_for(everything, kReserve, kReserveBytes, 3);
+            std::fprintf(stderr,
+                         "make_target_for placed a stub at TLS %#lx-%#lx, which the image "
+                         "claim %#lx-%#lx was supposed to cover\n",
+                         stray->tls_start(), stray->tls_end(),
+                         everything[0].start_vaddr, everything[0].end_vaddr);
         } catch (const CheckpointError&) {
             gave_up = true;
         }

@@ -44,7 +44,18 @@ int main() {
     assert(run(ARCTL_PATH + " checkpoint --verify --output "s + img + " -- " + SPARSE_PATH +
                " > " + base + ".log 2>&1") == 0);
     const std::string baseline = slurp(out);
-    assert(!baseline.empty() && baseline.find("touched=16 of 512") != std::string::npos);
+    // Assert the shape, not the numbers: hardcoding "touched=16 of 512" broke
+    // the moment the workload was resized for the benchmark, which is a change
+    // to the experiment's scale and not to what this test checks.
+    assert(!baseline.empty());
+    const auto at = baseline.find("touched=");
+    assert(at != std::string::npos && "the sparse workload must report what it touched");
+    const long touched = std::atol(baseline.c_str() + at + 8);
+    const auto of = baseline.find(" of ", at);
+    assert(of != std::string::npos);
+    const long total = std::atol(baseline.c_str() + of + 4);
+    assert(touched > 0 && total > 0 && touched * 4 < total &&
+           "the workload must touch only a small fraction, or it is not sparse");
 
     const auto restore = [&](const std::string& policy) {
         { std::ofstream f(out, std::ios::trunc); }
