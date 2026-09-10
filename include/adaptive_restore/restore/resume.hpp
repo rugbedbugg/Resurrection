@@ -20,7 +20,13 @@ struct ResumeResult {
 // seek to its recorded offset, and move it to its recorded fd number. Stub
 // descriptors absent from the image are closed. Validates dev/ino; a backing
 // file that moved is a hard failure.
-std::uint64_t restore_fds(RestoreTarget& target, const image::ImageReader& image);
+// `keep_fd` is a descriptor in the target that must survive the sweep even
+// though the image does not list it. The target's own userfaultfd reference is
+// deliberately held open (see uffd.hpp) so that losing the page server stalls
+// faults rather than silently resolving them to zero pages; closing it here
+// would quietly remove that guarantee.
+std::uint64_t restore_fds(RestoreTarget& target, const image::ImageReader& image,
+                          int keep_fd = -1);
 
 // Load the saved register file and hand the process control. After this returns
 // the target is running and is no longer managed by `target`.
@@ -34,6 +40,7 @@ std::uint64_t restore_fds(RestoreTarget& target, const image::ImageReader& image
 void transfer_control(RestoreTarget& target, const image::ImageReader& image);
 
 // restore_fds() then transfer_control().
-ResumeResult resume(RestoreTarget& target, const image::ImageReader& image);
+ResumeResult resume(RestoreTarget& target, const image::ImageReader& image,
+                    int keep_fd = -1);
 
 }  // namespace adaptive_restore::restore

@@ -132,6 +132,40 @@ RestoreSummary restore_image(const image::ImageReader& image, const RestoreOptio
         }
     }
 
+    // Deferring anything costs a fixed setup (uffd, page server, THP disabling)
+    // that §12 does not model. If the whole plan does not save more than that,
+    // the honest answer is to defer nothing: paying 8 ms of machinery to save
+    // 1 ms of transfer is a loss dressed up as a decision.
+    if (opts.policy == RestorePolicy::Cost && engine) {
+        const auto& kcal = opts.cold_cache ? cold_cal : warm_cal;
+        double plan = 0.0, all_eager = 0.0;
+        for (std::size_t i = 0; i < regions.size(); ++i) {
+            const std::uint64_t bytes =
+                static_cast<std::uint64_t>(regions[i].page_index_hi - regions[i].page_index_lo) *
+                image.header().page_size;
+            all_eager += kcal.cost_eager(bytes);
+        }
+        for (const auto& d : out.decisions) plan += d.predicted_cost;
+        // Regions that were never offered to the engine are eager either way.
+        for (const auto& r : regions)
+            if (!uffd_eligible(r))
+                plan += kcal.cost_eager(
+                    static_cast<std::uint64_t>(r.page_index_hi - r.page_index_lo) *
+                    image.header().page_size);
+        if (all_eager - plan < kcal.deferral_setup_s) {
+            std::fill(actions.begin(), actions.end(), paging::RestoreAction::Eager);
+            out.decisions.clear();
+            // The prediction must describe the plan that actually runs, not the
+            // one just discarded.
+            out.predicted_transfer_s = all_eager;
+            out.deferral_declined = true;
+        }
+    }
+
+    // Runs AFTER the decline gate above: the gate can revert every action to
+    // Eager, and disabling THP for a plan that is then discarded leaves the
+    // target paying the penalty for deferral it never performs.
+    //
     // Any 2 MiB span that will hold a deferred page must lose THP first, or the
     // kernel can make neighbouring pages resident behind the restore's back.
     //
@@ -166,33 +200,6 @@ RestoreSummary restore_image(const image::ImageReader& image, const RestoreOptio
             cur_lo = lo; cur_hi = hi;
         }
         if (cur_hi > cur_lo) disable_huge_pages(*target, cur_lo, cur_hi);
-    }
-
-    // Deferring anything costs a fixed setup (uffd, page server, THP disabling)
-    // that §12 does not model. If the whole plan does not save more than that,
-    // the honest answer is to defer nothing: paying 8 ms of machinery to save
-    // 1 ms of transfer is a loss dressed up as a decision.
-    if (opts.policy == RestorePolicy::Cost && engine) {
-        const auto& kcal = opts.cold_cache ? cold_cal : warm_cal;
-        double plan = 0.0, all_eager = 0.0;
-        for (std::size_t i = 0; i < regions.size(); ++i) {
-            const std::uint64_t bytes =
-                static_cast<std::uint64_t>(regions[i].page_index_hi - regions[i].page_index_lo) *
-                image.header().page_size;
-            all_eager += kcal.cost_eager(bytes);
-        }
-        for (const auto& d : out.decisions) plan += d.predicted_cost;
-        // Regions that were never offered to the engine are eager either way.
-        for (const auto& r : regions)
-            if (!uffd_eligible(r))
-                plan += kcal.cost_eager(
-                    static_cast<std::uint64_t>(r.page_index_hi - r.page_index_lo) *
-                    image.header().page_size);
-        if (all_eager - plan < kcal.deferral_setup_s) {
-            std::fill(actions.begin(), actions.end(), paging::RestoreAction::Eager);
-            out.decisions.clear();
-            out.deferral_declined = true;
-        }
     }
 
     const bool needs_uffd =
@@ -231,7 +238,7 @@ RestoreSummary restore_image(const image::ImageReader& image, const RestoreOptio
     if (opts.verify && opts.policy == RestorePolicy::Eager) eager.verify();
     out.pages = eager.stats();
 
-    out.resume = resume(*target, image);
+    out.resume = resume(*target, image, session ? session->uffd->target_fd() : -1);
     out.resume_latency_ns = monotonic_ns() - started;
     out.pages_loaded_upfront = out.pages.pages_written + out.pages.pages_zeroed +
                                out.pages.pages_already_zero;

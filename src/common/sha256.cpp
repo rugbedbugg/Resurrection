@@ -20,7 +20,12 @@ inline std::uint32_t ror(std::uint32_t x, int n) { return (x >> n) | (x << (32 -
 void block(std::uint32_t h[8], const unsigned char* p) {
     std::uint32_t w[64];
     for (int i = 0; i < 16; ++i)
-        w[i] = std::uint32_t(p[i*4] << 24 | p[i*4+1] << 16 | p[i*4+2] << 8 | p[i*4+3]);
+        // Cast before shifting: unsigned char promotes to int, so `<< 24` on a
+        // byte >= 0x80 shifts into the sign bit, which is undefined behaviour
+        // and traps under -fsanitize=undefined. This digest keys the profile
+        // store, so a miscompile here would silently break profile lookups.
+        w[i] = (std::uint32_t(p[i * 4]) << 24) | (std::uint32_t(p[i * 4 + 1]) << 16) |
+               (std::uint32_t(p[i * 4 + 2]) << 8) | std::uint32_t(p[i * 4 + 3]);
     for (int i = 16; i < 64; ++i) {
         std::uint32_t s0 = ror(w[i-15],7) ^ ror(w[i-15],18) ^ (w[i-15] >> 3);
         std::uint32_t s1 = ror(w[i-2],17) ^ ror(w[i-2],19) ^ (w[i-2] >> 10);

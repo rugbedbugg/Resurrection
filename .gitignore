@@ -10,11 +10,12 @@
 *.so
 *.so.*
 
-# Phase 0 probe binaries (sources are tracked, binaries are not)
-/experiments/phase0/probe_ptrace_regs
-/experiments/phase0/probe_process_vm_readv
-/experiments/phase0/probe_userfaultfd
-/experiments/phase0/probe_aslr
+# Experiment binaries: sources are tracked, compiled probes are not.
+# Listed per-file for phase 0 originally; the glob covers every phase.
+/experiments/phase*/probe_*
+/experiments/phase*/spike_*
+!/experiments/phase*/probe_*.c
+!/experiments/phase*/spike_*.c
 
 # Benchmark / experiment output
 /experiments/raw/*

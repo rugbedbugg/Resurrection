@@ -71,8 +71,10 @@ double plan_cost(const image::ImageReader& image,
         // Ground truth for this region. No record means assume fully touched,
         // which keeps the score pessimistic rather than flattering.
         std::uint32_t touched = pages, recorded = pages, hits = pages;
+        const bool has_record =
+            by_id.count(r.region_id) && !by_id[r.region_id]->touched_bitmap.empty();
         const auto it = by_id.find(r.region_id);
-        if (it != by_id.end() && !it->second->touched_bitmap.empty()) {
+        if (has_record) {
             touched = recorded = hits = 0;
             for (std::uint32_t p = 0; p < pages; ++p)
                 if (it->second->page_was_touched(p)) {
@@ -87,6 +89,15 @@ double plan_cost(const image::ImageReader& image,
             total += k.cost_eager(static_cast<std::uint64_t>(pages) * page_size);
             break;
         case paging::RestoreAction::StaticPrefetch: {
+            // With no recorded set the provider prefetches nothing and behaves
+            // as pure lazy (prefetch_provider.cpp). Pricing it as a full
+            // prefetch overstated the plan on exactly the regions the
+            // controller knows least about, and this number is printed as the
+            // share of achievable gain.
+            if (!has_record) {
+                total += k.cost_lazy(touched);
+                break;
+            }
             const std::uint32_t misses = touched > hits ? touched - hits : 0;
             const std::uint32_t wasted = recorded > hits ? recorded - hits : 0;
             total += k.cost_prefetch(static_cast<std::uint64_t>(recorded) * page_size, misses,

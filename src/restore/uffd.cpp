@@ -76,6 +76,7 @@ Userfault::Userfault(RestoreTarget& target)
     if (stolen < 0)
         throw CheckpointError(std::string("restore: pidfd_getfd: ") + std::strerror(saved));
     fd_ = static_cast<int>(stolen);
+    target_fd_ = static_cast<int>(remote);
 
     // The target keeps its own reference on purpose. If this page server dies,
     // that reference keeps the uffd alive so faults stall rather than silently

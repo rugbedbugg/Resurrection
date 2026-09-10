@@ -9,7 +9,7 @@
  *   HOT     the same subset every restore       -> static prefetch is right
  *   COLD    never touched after resume          -> lazy is right, eager pure waste
  *
- * Each allocation is 1 MiB, which glibc satisfies with its own mmap, so each
+ * Each allocation is 16 MiB, which glibc satisfies with its own mmap, so each
  * becomes its own mapping and therefore its own set of 256 KiB regions. The
  * access pattern is fixed-seed and ASLR is off, so `digest` is a constant and
  * the HOT subset is identical on every restore, which is what makes a recorded
@@ -67,7 +67,7 @@ int main(void) {
     for (unsigned i = 0; i < HOT_TOUCH; i++)
         digest += hot[(size_t)(i * 4) * PAGE];   /* every 4th page: a fixed quarter */
 
-    /* COLD: deliberately untouched. Eager pays for all 256 pages of it. */
+    /* COLD: deliberately untouched. Eager pays for all PAGES of it. */
     (void)cold;
 
     printf("digest=%lu dense=%u sparse=%u hot=%u cold=0\n", digest, PAGES, SPARSE_TOUCH,

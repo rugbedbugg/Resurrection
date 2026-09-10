@@ -50,7 +50,8 @@ void stage_path(RestoreTarget& t, const std::string& path, std::uint64_t at) {
 
 }  // namespace
 
-std::uint64_t restore_fds(RestoreTarget& target, const image::ImageReader& image) {
+std::uint64_t restore_fds(RestoreTarget& target, const image::ImageReader& image,
+                          int keep_fd) {
     const auto fds = image.fds();
     const std::uint64_t scratch = target.reserve_addr() + target.reserve_bytes() - 4096;
 
@@ -98,6 +99,7 @@ std::uint64_t restore_fds(RestoreTarget& target, const image::ImageReader& image
     // the restored process would own descriptors it never opened.
     std::uint64_t closed = 0;
     for (const int fd : live_fds(target.pid())) {
+        if (fd == keep_fd) continue;  // the target's uffd reference; see the header
         const bool wanted = std::any_of(fds.begin(), fds.end(), [fd](const image::FdRecord& r) {
             return static_cast<int>(r.fd) == fd;
         });
@@ -171,10 +173,10 @@ void transfer_control(RestoreTarget& target, const image::ImageReader& image) {
     target.release();  // it is its own process now
 }
 
-ResumeResult resume(RestoreTarget& target, const image::ImageReader& image) {
+ResumeResult resume(RestoreTarget& target, const image::ImageReader& image, int keep_fd) {
     ResumeResult res;
     const auto before = live_fds(target.pid()).size();
-    res.fds_restored = restore_fds(target, image);
+    res.fds_restored = restore_fds(target, image, keep_fd);
     const auto after = live_fds(target.pid()).size();
     res.fds_closed = (before > after) ? (before - after) : 0;
     res.xstate_bytes = image.registers().xstate.size();

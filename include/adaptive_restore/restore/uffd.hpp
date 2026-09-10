@@ -40,6 +40,11 @@ public:
     Userfault& operator=(const Userfault&) = delete;
 
     int fd() const { return fd_; }
+
+    // The descriptor number the uffd occupies INSIDE the target. That reference
+    // is kept deliberately (see the constructor), so anything sweeping the
+    // target's fd table must spare it.
+    int target_fd() const { return target_fd_; }
     std::uint64_t features() const { return features_; }
 
     // Register a range in MISSING mode. The range must be page-aligned and must
@@ -50,6 +55,7 @@ public:
 
 private:
     int fd_ = -1;
+    int target_fd_ = -1;
     std::uint64_t features_ = 0;
     std::uint64_t registered_bytes_ = 0;
     std::uint64_t reserve_start_ = 0, reserve_end_ = 0;

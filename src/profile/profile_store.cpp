@@ -37,6 +37,17 @@ std::string ProfileKey::to_string() const {
 struct ProfileStore::Impl {
     ::sqlite3* db = nullptr;
 
+    // A failed prepare leaves `st` null, and every call site here used it
+    // unconditionally: a locked or corrupt database segfaulted instead of
+    // throwing like every other failure path in this file.
+    ::sqlite3_stmt* prepare(const char* sql) {
+        ::sqlite3_stmt* st = nullptr;
+        if (::sqlite3_prepare_v2(db, sql, -1, &st, nullptr) != SQLITE_OK || st == nullptr)
+            throw CheckpointError(std::string("profile: cannot prepare statement: ") +
+                                  ::sqlite3_errmsg(db));
+        return st;
+    }
+
     void exec(const char* sql) {
         char* err = nullptr;
         if (::sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
@@ -113,20 +124,19 @@ ProfileStore::ProfileStore(ProfileStore&& o) noexcept : impl_(std::exchange(o.im
 
 ProfileStore& ProfileStore::operator=(ProfileStore&& o) noexcept {
     if (this != &o) {
-        this->~ProfileStore();
-        impl_ = std::exchange(o.impl_, nullptr);
+        // Not `this->~ProfileStore()`: that ends the object's lifetime and then
+        // writes to it. Swapping lets the moved-from object run the cleanup.
+        std::swap(impl_, o.impl_);
     }
     return *this;
 }
 
 std::vector<RegionHistory> ProfileStore::load(const ProfileKey& key) const {
     std::vector<RegionHistory> out;
-    ::sqlite3_stmt* st = nullptr;
-    ::sqlite3_prepare_v2(impl_->db,
-                         "SELECT region_id, restore_count, fraction_accessed_avg,"
-                         " zero_page_fraction, last_action, touched_bitmap FROM region_history"
-                         " WHERE key=? ORDER BY region_id;",
-                         -1, &st, nullptr);
+    ::sqlite3_stmt* st = impl_->prepare(
+        "SELECT region_id, restore_count, fraction_accessed_avg,"
+        " zero_page_fraction, last_action, touched_bitmap FROM region_history"
+        " WHERE key=? ORDER BY region_id;");
     const std::string k = key.to_string();
     ::sqlite3_bind_text(st, 1, k.c_str(), -1, SQLITE_TRANSIENT);
     while (::sqlite3_step(st) == SQLITE_ROW) {
@@ -154,8 +164,7 @@ void ProfileStore::record(const ProfileKey& key, const std::vector<RegionHistory
         for (const auto& o : observed) {
             // Running mean over the last N restores of this identity (§10.1).
             // Stored as an incremental average so no history of samples is kept.
-            ::sqlite3_stmt* st = nullptr;
-            ::sqlite3_prepare_v2(impl_->db,
+            ::sqlite3_stmt* st = impl_->prepare(
                                  "INSERT INTO region_history"
                                  " (key,region_id,restore_count,fraction_accessed_avg,"
                                  "  zero_page_fraction,last_action,touched_bitmap)"
@@ -167,8 +176,7 @@ void ProfileStore::record(const ProfileKey& key, const std::vector<RegionHistory
                                  "  zero_page_fraction = excluded.zero_page_fraction,"
                                  "  last_action = excluded.last_action,"
                                  "  touched_bitmap = excluded.touched_bitmap,"
-                                 "  restore_count = restore_count + 1;",
-                                 -1, &st, nullptr);
+                                 "  restore_count = restore_count + 1;");
             ::sqlite3_bind_text(st, 1, k.c_str(), -1, SQLITE_TRANSIENT);
             ::sqlite3_bind_int64(st, 2, o.region_id);
             ::sqlite3_bind_double(st, 3, o.fraction_accessed_avg);
@@ -193,8 +201,7 @@ void ProfileStore::record(const ProfileKey& key, const std::vector<RegionHistory
 }
 
 void ProfileStore::reset(const ProfileKey& key) {
-    ::sqlite3_stmt* st = nullptr;
-    ::sqlite3_prepare_v2(impl_->db, "DELETE FROM region_history WHERE key=?;", -1, &st, nullptr);
+    ::sqlite3_stmt* st = impl_->prepare("DELETE FROM region_history WHERE key=?;");
     const std::string k = key.to_string();
     ::sqlite3_bind_text(st, 1, k.c_str(), -1, SQLITE_TRANSIENT);
     ::sqlite3_step(st);

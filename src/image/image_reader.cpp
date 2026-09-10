@@ -137,6 +137,30 @@ void ImageReader::verify() const {
     if (read_u64(integrity.offset + 4) != static_cast<std::uint64_t>(page_data_crc))
         throw ImageError("image: page data CRC mismatch");
 
+    // 5b. Every Raw page must be exactly one page long. Consumers copy
+    //     page_size bytes starting at page_bytes(), so a short record would
+    //     read past the page store -- past the whole buffer for the last page --
+    //     and hand that memory to the restored target.
+    {
+        ByteReader pr(span(dir_[sidx(Section::PageIndex)].offset,
+                           dir_[sidx(Section::PageIndex)].length));
+        const std::uint64_t n = dir_[sidx(Section::PageIndex)].count;
+        for (std::uint64_t i = 0; i < n; ++i) {
+            const std::uint64_t vaddr = pr.u64();
+            pr.u64();  // store_offset
+            const std::uint32_t store_len = pr.u32();
+            const auto enc = static_cast<PageEncoding>(pr.u8());
+            pr.skip(3);
+            pr.u32();  // crc32c
+            if (enc == PageEncoding::Raw && store_len != ps)
+                throw ImageError("image: raw page @ vaddr " + hex(vaddr) + " has store_len " +
+                                 std::to_string(store_len) + ", expected " + std::to_string(ps));
+            if (enc != PageEncoding::Raw && store_len != 0)
+                throw ImageError("image: non-raw page @ vaddr " + hex(vaddr) +
+                                 " carries a payload length");
+        }
+    }
+
     // 6. full_file_crc32c over the whole buffer with its own field zeroed.
     const std::uint32_t full = crc32c_with_hole(span(0, buf_.size()), integrity.offset);
     if (full != read_u32(integrity.offset))
