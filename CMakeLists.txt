@@ -49,6 +49,9 @@ if(SQLite3Opt_FOUND)
     message(STATUS "sqlite3 ${SQLITE3_VERSION} found: profile store enabled")
     list(APPEND AR_PROFILE_SOURCES src/profile/profile_store.cpp
                                    src/profile/region_profiler.cpp)
+    if(Compel_FOUND)
+        list(APPEND AR_PROFILE_SOURCES src/paging/prefetch_provider.cpp)
+    endif()
 else()
     message(STATUS "sqlite3 not found: building without the profile store "
                    "(prefetch and cost policies unavailable)")

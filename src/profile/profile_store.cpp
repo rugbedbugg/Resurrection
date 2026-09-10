@@ -70,6 +70,7 @@ ProfileStore ProfileStore::open(const std::filesystem::path& path) {
         "  fraction_accessed_avg REAL NOT NULL,"
         "  zero_page_fraction REAL NOT NULL,"
         "  last_action INTEGER NOT NULL,"
+        "  touched_bitmap BLOB,"
         "  PRIMARY KEY (key, region_id));");
 
     // Schema versioning (§16.3): refuse a database this build cannot read
@@ -119,7 +120,7 @@ std::vector<RegionHistory> ProfileStore::load(const ProfileKey& key) const {
     ::sqlite3_stmt* st = nullptr;
     ::sqlite3_prepare_v2(impl_->db,
                          "SELECT region_id, restore_count, fraction_accessed_avg,"
-                         " zero_page_fraction, last_action FROM region_history"
+                         " zero_page_fraction, last_action, touched_bitmap FROM region_history"
                          " WHERE key=? ORDER BY region_id;",
                          -1, &st, nullptr);
     const std::string k = key.to_string();
@@ -131,6 +132,11 @@ std::vector<RegionHistory> ProfileStore::load(const ProfileKey& key) const {
         h.fraction_accessed_avg = static_cast<float>(::sqlite3_column_double(st, 2));
         h.zero_page_fraction = static_cast<float>(::sqlite3_column_double(st, 3));
         h.last_action = static_cast<paging::RestoreAction>(::sqlite3_column_int(st, 4));
+        if (const void* blob = ::sqlite3_column_blob(st, 5)) {
+            const int n = ::sqlite3_column_bytes(st, 5);
+            const auto* b = static_cast<const std::uint8_t*>(blob);
+            h.touched_bitmap.assign(b, b + n);
+        }
         out.push_back(h);
     }
     ::sqlite3_finalize(st);
@@ -148,14 +154,15 @@ void ProfileStore::record(const ProfileKey& key, const std::vector<RegionHistory
             ::sqlite3_prepare_v2(impl_->db,
                                  "INSERT INTO region_history"
                                  " (key,region_id,restore_count,fraction_accessed_avg,"
-                                 "  zero_page_fraction,last_action)"
-                                 " VALUES(?,?,1,?,?,?)"
+                                 "  zero_page_fraction,last_action,touched_bitmap)"
+                                 " VALUES(?,?,1,?,?,?,?)"
                                  " ON CONFLICT(key,region_id) DO UPDATE SET"
                                  "  fraction_accessed_avg ="
                                  "    (fraction_accessed_avg * restore_count + excluded."
                                  "     fraction_accessed_avg) / (restore_count + 1),"
                                  "  zero_page_fraction = excluded.zero_page_fraction,"
                                  "  last_action = excluded.last_action,"
+                                 "  touched_bitmap = excluded.touched_bitmap,"
                                  "  restore_count = restore_count + 1;",
                                  -1, &st, nullptr);
             ::sqlite3_bind_text(st, 1, k.c_str(), -1, SQLITE_TRANSIENT);
@@ -163,6 +170,11 @@ void ProfileStore::record(const ProfileKey& key, const std::vector<RegionHistory
             ::sqlite3_bind_double(st, 3, o.fraction_accessed_avg);
             ::sqlite3_bind_double(st, 4, o.zero_page_fraction);
             ::sqlite3_bind_int(st, 5, static_cast<int>(o.last_action));
+            if (o.touched_bitmap.empty())
+                ::sqlite3_bind_null(st, 6);
+            else
+                ::sqlite3_bind_blob(st, 6, o.touched_bitmap.data(),
+                                    static_cast<int>(o.touched_bitmap.size()), SQLITE_TRANSIENT);
             const int rc = ::sqlite3_step(st);
             ::sqlite3_finalize(st);
             if (rc != SQLITE_DONE)

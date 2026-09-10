@@ -37,19 +37,23 @@ int main() {
         assert(store.load(k).empty() && "a fresh profile has no history");
 
         // First restore: region 0 saw 50% of its pages, region 1 saw 10%.
-        store.record(k, {{0, 0, 0.50f, 0.0f, RestoreAction::Lazy},
-                         {1, 0, 0.10f, 0.25f, RestoreAction::Lazy}});
+        store.record(k, {{0, 0, 0.50f, 0.0f, RestoreAction::Lazy, {0b00000101}},
+                         {1, 0, 0.10f, 0.25f, RestoreAction::Lazy, {0b00000010}}});
         auto rows = store.load(k);
         assert(rows.size() == 2);
         assert(rows[0].restore_count == 1 && std::fabs(rows[0].fraction_accessed_avg - 0.50f) < 1e-6);
 
         // Second restore: the average must move, not be replaced.
-        store.record(k, {{0, 0, 0.30f, 0.0f, RestoreAction::Eager}});
+        store.record(k, {{0, 0, 0.30f, 0.0f, RestoreAction::Eager, {0b00001001}}});
         rows = store.load(k);
         assert(rows[0].restore_count == 2);
         assert(std::fabs(rows[0].fraction_accessed_avg - 0.40f) < 1e-5 &&
                "fraction_accessed must be a running mean over restores");
         assert(rows[0].last_action == RestoreAction::Eager);
+        // The working set is replaced, not averaged: it names pages, and the
+        // most recent restore is the one worth prefetching (§4, REAP).
+        assert(rows[0].page_was_touched(0) && rows[0].page_was_touched(3));
+        assert(!rows[0].page_was_touched(2) && "the earlier set must not linger");
         // An untouched region keeps its own history.
         assert(rows[1].restore_count == 1);
         assert(store.restores_recorded(k) == 2);
@@ -87,7 +91,7 @@ int main() {
     // --- a database from a different schema is refused, not misread --------
     {
         auto store = ProfileStore::open(db);
-        store.record(k, {{0, 0, 0.9f, 0.0f, RestoreAction::Eager}});
+        store.record(k, {{0, 0, 0.9f, 0.0f, RestoreAction::Eager, {}}});
     }
     const std::filesystem::path bad = db.string() + ".bad";
     std::filesystem::copy_file(db, bad, std::filesystem::copy_options::overwrite_existing);

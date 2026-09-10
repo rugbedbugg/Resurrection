@@ -40,6 +40,14 @@ std::vector<RegionHistory> observe_regions(const image::ImageReader& image,
             static_cast<float>(touched[i].size()) / static_cast<float>(n);
         h.zero_page_fraction = static_cast<float>(zero) / static_cast<float>(n);
         h.last_action = paging::RestoreAction::Lazy;
+
+        // The working set itself (§9.5): one bit per page of the region.
+        h.touched_bitmap.assign((n + 7) / 8, 0);
+        for (std::uint32_t p = 0; p < n; ++p) {
+            const std::uint32_t gi = r.page_index_lo + p;
+            if (gi < pages.size() && touched[i].count(pages[gi].vaddr))
+                h.touched_bitmap[p / 8] |= static_cast<std::uint8_t>(1u << (p % 8));
+        }
         out.push_back(h);
     }
     return out;

@@ -27,13 +27,28 @@ struct ProfileKey {
     bool operator==(const ProfileKey&) const = default;
 };
 
-// Tier 1 per-region record (§16.2).
+// Tier 1 per-region record (§16.2), plus the recorded working set.
+//
+// §16.2's field list carries only `fraction_accessed_avg`, but a fraction
+// cannot tell a prefetcher WHICH pages to load. §16 and §20 both state the
+// store exists to accumulate working sets across restores, so `touched_bitmap`
+// fills in what the trimmed record omits: one bit per page of the region, set
+// if that page was demanded on the most recent observed restore.
+//
+// Most-recent rather than a union over history, matching REAP (§4): a union
+// over-prefetches once behaviour drifts, and drift handling is Tier 2.
 struct RegionHistory {
     std::uint32_t region_id = 0;
     std::uint64_t restore_count = 0;
     float fraction_accessed_avg = 0.0f;
     float zero_page_fraction = 0.0f;
     paging::RestoreAction last_action = paging::RestoreAction::Lazy;
+    std::vector<std::uint8_t> touched_bitmap;  // bit i = page (page_index_lo + i)
+
+    bool page_was_touched(std::uint32_t i) const {
+        const std::size_t byte = i / 8;
+        return byte < touched_bitmap.size() && (touched_bitmap[byte] & (1u << (i % 8)));
+    }
 };
 
 // SQLite-backed, per §16.3: atomic updates, schema versioning, resettable,
@@ -67,6 +82,6 @@ private:
 
 // Schema version of the profile database itself. A database written by a
 // different schema is refused rather than misread.
-inline constexpr int kProfileSchemaVersion = 1;
+inline constexpr int kProfileSchemaVersion = 2;  // v2 added touched_bitmap
 
 }  // namespace adaptive_restore::profile

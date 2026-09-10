@@ -28,9 +28,9 @@ int main() {
                    kB, kB + 4 * 4096, 0, 0, 0, ""});
 
     std::vector<std::byte> page(4096, std::byte{0x7});
-    for (int i = 0; i < 4; ++i) w.add_page({kA + i * 4096, 0, 0, PageEncoding::Raw, 0}, page);
-    for (int i = 0; i < 2; ++i) w.add_page({kB + i * 4096, 0, 0, PageEncoding::Raw, 0}, page);
-    for (int i = 2; i < 4; ++i) w.add_page({kB + i * 4096, 0, 0, PageEncoding::Zero, 0}, {});
+    for (std::uint32_t i = 0; i < 4; ++i) w.add_page({kA + i * 4096, 0, 0, PageEncoding::Raw, 0}, page);
+    for (std::uint32_t i = 0; i < 2; ++i) w.add_page({kB + i * 4096, 0, 0, PageEncoding::Raw, 0}, page);
+    for (std::uint32_t i = 2; i < 4; ++i) w.add_page({kB + i * 4096, 0, 0, PageEncoding::Zero, 0}, {});
     w.add_region({0, 0, kA, kA + 4 * 4096, 0, 4});
     w.add_region({0, 1, kB, kB + 4 * 4096, 4, 8});
 
@@ -55,6 +55,14 @@ int main() {
         assert(obs[0].zero_page_fraction == 0.0f);
         assert(std::fabs(obs[1].zero_page_fraction - 0.5f) < 1e-6);
         assert(obs[0].restore_count == 1 && "one observation per restore");
+
+        // The bitmap must name WHICH pages, not just how many: a fraction
+        // cannot tell a prefetcher what to load (§9.5).
+        assert(!obs[0].touched_bitmap.empty());
+        assert(!obs[0].page_was_touched(0) && obs[0].page_was_touched(1) &&
+               !obs[0].page_was_touched(2) && !obs[0].page_was_touched(3));
+        assert(obs[1].page_was_touched(0) && obs[1].page_was_touched(1) &&
+               obs[1].page_was_touched(2) && !obs[1].page_was_touched(3));
     }
 
     // --- an eager region is UNOBSERVABLE and must be left alone ------------
