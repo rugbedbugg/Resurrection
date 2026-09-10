@@ -8,9 +8,13 @@ working-set prefetch, or lazy paging — instead of applying one strategy to the
 whole process. A low-overhead analytical cost model makes the per-region choice
 and is calibrated against measured I/O and page-fault costs.
 
-**Status:** Phase 1 complete. `arctl checkpoint` captures a stopped
-single-threaded target into a verified `.arimg`, and `arctl inspect` reads it
-back. Phase 2 (restore) is next.
+**Status:** Phase 2 complete. `arctl checkpoint` captures a stopped
+single-threaded target into a verified `.arimg`, `arctl inspect` reads it back,
+and `arctl restore --policy eager` brings the process back and resumes it at the
+saved instruction. Phase 3 (lazy restore via `userfaultfd`) is next.
+
+Restore needs `criu`/`compel` at build time; checkpoint and inspect do not, and
+a build without compel is supported (it simply has no `restore`).
 
 Design drafts, phase reports, and specs live in `docs/` — a local, untracked
 working folder. This README is the only committed prose.
@@ -57,6 +61,7 @@ the snapshot point in the workload with `ar_checkpoint_here()` from
 ```sh
 arctl checkpoint --verify --output run.arimg -- ./build/workloads/workload_mini
 arctl inspect --image run.arimg
+arctl restore --image run.arimg --policy eager --verify
 ```
 
 `--verify` re-reads every captured page from the live process and re-checksums
