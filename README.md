@@ -8,13 +8,22 @@ working-set prefetch, or lazy paging — instead of applying one strategy to the
 whole process. A low-overhead analytical cost model makes the per-region choice
 and is calibrated against measured I/O and page-fault costs.
 
-**Status:** Phase 3 complete. `arctl checkpoint` captures a stopped
+**Status:** Phase 4 complete. `arctl checkpoint` captures a stopped
 single-threaded target into a verified `.arimg`, `arctl inspect` reads it back,
 and `arctl restore` brings the process back and resumes it at the saved
 instruction under either `--policy eager` (populate everything up front) or
 `--policy lazy` (register anonymous regions with `userfaultfd` and serve pages
-on demand). Phase 4 (static prefetch, region profiler, and the cost-model
-controller) is next.
+on demand), `--policy prefetch` (load the working set recorded by earlier
+restores), or `--policy cost` (choose per 256 KiB region from an analytical cost
+model calibrated against this machine). Phase 5 (benchmark suite and visualizer)
+is next.
+
+On a workload with regions of genuinely different access behaviour, `--policy
+cost` beats every fixed policy by a median of ~16% and captures ~100% of the
+gain an oracle with perfect knowledge could achieve. Where a fixed policy is
+already optimal it matches that policy rather than losing to it, and when its
+recorded history is wrong it degrades in latency, never in correctness. Numbers
+and method: `docs/phase4-calibration-report.md`.
 
 Restore needs `criu`/`compel` at build time; checkpoint and inspect do not, and
 a build without compel is supported (it simply has no `restore`).
@@ -65,8 +74,15 @@ the snapshot point in the workload with `ar_checkpoint_here()` from
 arctl checkpoint --verify --output run.arimg -- ./build/workloads/workload_mini
 arctl inspect --image run.arimg
 arctl restore --image run.arimg --policy eager --verify
-arctl restore --image run.arimg --policy lazy --record-trace faults.tsv
+arctl restore --image run.arimg --policy lazy --record-trace faults.tsv --profile p.db
+arctl restore --image run.arimg --policy cost --profile p.db
+arctl profile show --image run.arimg --profile p.db
 ```
+
+A restore under a deferring policy teaches the profile; later restores of the
+same checkpoint identity read it back. `--profile` needs SQLite, which like
+`compel` is restore-side only: a build without either still checkpoints and
+inspects.
 
 Under `--policy lazy`, `arctl` stays alive as the target's page server for as
 long as it runs. `--record-trace` writes one row per demand fault; because every

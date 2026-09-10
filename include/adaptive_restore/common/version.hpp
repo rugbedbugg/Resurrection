@@ -10,9 +10,9 @@
 namespace adaptive_restore {
 
 inline constexpr int kProjectVersionMajor = 0;
-inline constexpr int kProjectVersionMinor = 3;
-inline constexpr int kProjectVersionPatch = 5;
-inline constexpr const char* kProjectVersion = "0.3.5";
+inline constexpr int kProjectVersionMinor = 4;
+inline constexpr int kProjectVersionPatch = 0;
+inline constexpr const char* kProjectVersion = "0.4.0";
 
 // Checkpoint image: 8-byte magic + format version (§7.2).
 inline constexpr unsigned char kImageMagic[8] = {'A', 'R', 'I', 'M', 'G', '\0', '\0', '\1'};
