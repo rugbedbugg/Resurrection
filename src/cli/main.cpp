@@ -35,6 +35,14 @@ int usage(std::ostream& os) {
     return 2;
 }
 
+#ifndef AR_HAVE_COMPEL
+int no_restore_support() {
+    std::cerr << "arctl: 'restore' is unavailable: this build was configured without compel.\n"
+                 "       Install criu/compel and reconfigure to enable it.\n";
+    return ENOSYS;
+}
+#endif
+
 int not_implemented(std::string_view cmd) {
     std::cerr << "arctl: '" << cmd << "' is not implemented yet (" << std::strerror(ENOSYS) << ")\n";
     return ENOSYS;
@@ -54,7 +62,14 @@ int main(int argc, char** argv) {
     if (cmd == "checkpoint") return adaptive_restore::cli::cmd_checkpoint(rest);
     if (cmd == "inspect") return adaptive_restore::cli::cmd_inspect(rest);
 
-    if (cmd == "restore" || cmd == "profile" || cmd == "benchmark" || cmd == "visualize")
+    if (cmd == "restore") {
+#ifdef AR_HAVE_COMPEL
+        return not_implemented(cmd);
+#else
+        return no_restore_support();
+#endif
+    }
+    if (cmd == "profile" || cmd == "benchmark" || cmd == "visualize")
         return not_implemented(cmd);
 
     std::cerr << "arctl: unknown command '" << cmd << "'\n\n";

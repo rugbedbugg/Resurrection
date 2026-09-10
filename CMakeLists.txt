@@ -29,8 +29,24 @@ endif()
 
 add_compile_options(-Wall -Wextra -Wshadow -Wconversion -Wsign-conversion)
 
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
 option(AR_BUILD_TESTS "Build the test suite" ON)
 option(AR_BUILD_WORKLOADS "Build the synthetic benchmark workloads" ON)
+option(AR_FORCE_NO_COMPEL "Pretend compel is absent (exercises the no-restore build)" OFF)
+
+# --- optional: compel, for the Phase 2 restorer -----------------------------
+# Capture (checkpoint/inspect) must never depend on this. A build without compel
+# is a supported configuration, not a degraded one: it simply has no `restore`.
+if(NOT AR_FORCE_NO_COMPEL)
+    find_package(Compel)
+endif()
+if(Compel_FOUND)
+    message(STATUS "compel ${COMPEL_VERSION} found: restore support enabled")
+else()
+    message(STATUS "compel not found: building without restore support "
+                   "(checkpoint and inspect are unaffected)")
+endif()
 
 # --- core library ------------------------------------------------------------
 # Sources are added phase by phase (see docs/design-draft-v2.md §20).
@@ -57,6 +73,10 @@ add_executable(arctl
     src/cli/inspect_cmd.cpp
 )
 target_link_libraries(arctl PRIVATE adaptive_restore)
+if(Compel_FOUND)
+    target_link_libraries(arctl PRIVATE Compel::Compel)
+    target_compile_definitions(arctl PRIVATE AR_HAVE_COMPEL)
+endif()
 
 if(AR_BUILD_TESTS)
     enable_testing()
