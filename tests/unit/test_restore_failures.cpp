@@ -55,7 +55,7 @@ static bool fails_with(const std::vector<std::byte>& bytes, const char* needle) 
     try {
         auto img = ImageReader::from_bytes(bytes);
         RestoreOptions o;
-        restore_eager(img, o);
+        restore_image(img, o);
     } catch (const std::exception& e) {
         return std::string(e.what()).find(needle) != std::string::npos;
     }
@@ -154,7 +154,7 @@ int main() {
 
         auto img = ImageReader::from_bytes(bytes);
         RestoreOptions o;
-        const auto s = restore_eager(img, o);
+        const auto s = restore_image(img, o);
         int st = 0;
         assert(::waitpid(s.pid, &st, 0) == s.pid);
         assert(WIFSIGNALED(st) && "a process resumed at an unmapped rip must die by signal");

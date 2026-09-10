@@ -44,6 +44,7 @@ private:
 struct ServeResult {
     std::uint64_t faults_served = 0;
     bool target_exited = false;
+    int exit_status = 0;  // wait status, valid when target_exited
 };
 
 // Drive the uffd until the target exits. Returns when the target is gone or the

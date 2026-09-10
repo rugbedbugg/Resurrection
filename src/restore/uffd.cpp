@@ -39,7 +39,10 @@ std::vector<LazyRange> lazy_ranges(const image::ImageReader& image) {
         if (m.flags & image::MappingFlag::KernelSpecial) continue;
         if (m.flags & image::MappingFlag::Shared) continue;   // MISSING mode is private-only
         if (m.flags & image::MappingFlag::FileBacked) continue;
-        if (!m.path.empty()) continue;                        // belt and braces
+        // NB: do NOT filter on a non-empty path here. [heap] and [stack] carry
+        // their kernel tag in the path field while being ordinary private
+        // anonymous memory, and excluding them leaves the largest lazy
+        // candidates in the image being restored eagerly for no reason.
         out.push_back({m.start_vaddr, m.end_vaddr, m.mapping_id});
     }
     return out;
@@ -52,7 +55,13 @@ Userfault::Userfault(RestoreTarget& target)
       tls_end_(target.tls_end()) {
     // UFFD_USER_MODE_ONLY is the Phase 0 decision: it works even where
     // vm.unprivileged_userfaultfd is 0, and there is no fallback.
-    const long remote = target.syscall(__NR_userfaultfd, O_CLOEXEC | UFFD_USER_MODE_ONLY);
+    // O_NONBLOCK matters more than it looks: the kernel's userfaultfd_poll()
+    // returns EPOLLERR outright for a blocking fd, because poll() cannot
+    // promise that a subsequent read() will not block. Without it every poll
+    // reports an error, no fault is ever read, and the target sits in
+    // handle_userfault forever.
+    const long remote =
+        target.syscall(__NR_userfaultfd, O_CLOEXEC | O_NONBLOCK | UFFD_USER_MODE_ONLY);
     if (remote < 0)
         throw CheckpointError(std::string("restore: target userfaultfd(): ") +
                               std::strerror(static_cast<int>(-remote)));

@@ -48,13 +48,18 @@ int cmd_restore(std::span<const std::string_view> args) {
 
     if (image_path.empty())
         return fail("usage: arctl restore --image <image> --policy eager [--verify]");
-    if (policy != "eager")
+    if (policy == "eager") {
+        opts.policy = restore::RestorePolicy::Eager;
+    } else if (policy == "lazy") {
+        opts.policy = restore::RestorePolicy::Lazy;
+    } else {
         return fail("policy '" + policy +
-                    "' is not implemented yet; Phase 2 provides --policy eager only");
+                    "' is not implemented yet; available policies are eager and lazy");
+    }
 
     try {
         const auto image = image::ImageReader::open(image_path);
-        const auto s = restore::restore_eager(image, opts);
+        const auto s = restore::restore_image(image, opts);
 
         std::cout << "restored " << image_path << " as pid " << s.pid << '\n'
                   << "  mappings   " << s.layout.created << " recreated, "
@@ -64,11 +69,37 @@ int cmd_restore(std::span<const std::string_view> args) {
                   << "  page data  " << s.pages.bytes_written << " bytes in "
                   << s.pages.writev_calls << " writes\n"
                   << "  fds        " << s.resume.fds_restored << " restored\n"
-                  << "  verify     " << (opts.verify ? "0 mismatches" : "skipped") << '\n'
+                  << "  regions    " << s.regions_eager << " eager, " << s.regions_lazy
+                  << " lazy\n"
+                  << "  verify     "
+                  << (!opts.verify ? "skipped"
+                      : opts.policy == restore::RestorePolicy::Eager
+                          ? "0 mismatches"
+                          : "eager regions only (lazy pages are not resident yet)")
+                  << '\n'
                   << "  resume     " << ms(s.resume_latency_ns) << " to first instruction\n";
 
+        // Under lazy the target is running with pages still owed to it, so
+        // arctl becomes its page server for the rest of its life.
         int st = 0;
-        if (::waitpid(s.pid, &st, 0) == s.pid) {
+        bool reaped = false;
+        if (s.session) {
+            std::cout << "  serving    " << s.lazy.pages_registered << " pages across "
+                      << s.lazy.regions_registered << " registered regions\n";
+            const auto served = s.session->serve(s.pid);
+            const auto& ls = s.session->provider->stats();
+            std::cout << "  faults     " << served.faults_served << " served ("
+                      << ls.copy_faults << " copy, " << ls.zero_faults << " zero), "
+                      << ls.bytes_supplied << " bytes\n";
+            if (ls.pages_registered > 0)
+                std::cout << "  untouched  " << (ls.pages_registered - served.faults_served)
+                          << " of " << ls.pages_registered
+                          << " registered pages were never demanded\n";
+            st = served.exit_status;
+            reaped = served.target_exited;
+        }
+        if (!reaped) reaped = (::waitpid(s.pid, &st, 0) == s.pid);
+        if (reaped) {
             if (WIFEXITED(st))
                 std::cout << "  target     exited " << WEXITSTATUS(st) << '\n';
             else if (WIFSIGNALED(st))

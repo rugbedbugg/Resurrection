@@ -97,10 +97,14 @@ ServeResult serve_faults(restore::Userfault& uffd, PageProvider& provider,
                          const PageLocator& locator, pid_t target_pid) {
     ServeResult out;
 
-    const auto target_gone = [target_pid]() {
+    const auto target_gone = [target_pid, &out]() {
         int st = 0;
         const pid_t w = ::waitpid(target_pid, &st, WNOHANG);
-        return w == target_pid || (w < 0 && errno == ECHILD);
+        if (w == target_pid) {
+            out.exit_status = st;
+            return true;
+        }
+        return w < 0 && errno == ECHILD;
     };
 
     for (;;) {
@@ -120,9 +124,23 @@ ServeResult serve_faults(restore::Userfault& uffd, PageProvider& provider,
             }
             continue;
         }
-        if (pfd.revents & (POLLHUP | POLLERR)) {
+        if (pfd.revents & POLLHUP) {
             out.target_exited = true;
             return out;
+        }
+        if ((pfd.revents & POLLERR) && !(pfd.revents & POLLIN)) {
+            // Not "the target went away": the kernel reports EPOLLERR for a
+            // userfaultfd that is uninitialised or, crucially, not O_NONBLOCK.
+            // Treating it as a clean exit is how a mis-created uffd turns into
+            // a target that silently reads zero pages.
+            if (target_gone()) {
+                out.target_exited = true;
+                return out;
+            }
+            ::kill(target_pid, SIGKILL);
+            throw CheckpointError(
+                "restore: userfaultfd poll reported POLLERR while the target is alive; "
+                "the fd is uninitialised or was not created with O_NONBLOCK");
         }
 
         ::uffd_msg msg{};
