@@ -34,6 +34,10 @@ std::unique_ptr<RestoreTarget> make_target_for(const std::vector<image::MappingR
                                                std::uint64_t reserve_addr,
                                                std::size_t reserve_bytes, int max_attempts = 8);
 
+// Stop the kernel backing [start, end) with transparent huge pages. Required
+// before deferring any page in that range; see the implementation for why.
+void disable_huge_pages(RestoreTarget& target, std::uint64_t start, std::uint64_t end);
+
 // Tear down the stub's address space and rebuild the image's in its place.
 //
 // Every non-kernel mapping is recreated, including no-access guard regions, so

@@ -5,6 +5,8 @@
 
 #include <algorithm>
 #include <cerrno>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <string>
 #include <unordered_set>
@@ -14,6 +16,14 @@
 #include "adaptive_restore/paging/transfer.hpp"
 
 namespace adaptive_restore::paging {
+
+namespace {
+std::string hex(std::uint64_t v) {
+    char b[19];
+    std::snprintf(b, sizeof b, "0x%llx", static_cast<unsigned long long>(v));
+    return std::string(b);
+}
+}  // namespace
 
 PrefetchProvider::PrefetchProvider(const image::ImageReader& image,
                                    restore::RestoreTarget& target, restore::Userfault& uffd,
@@ -116,8 +126,21 @@ std::uint64_t PrefetchProvider::copy_run(std::uint64_t vaddr, const std::byte* s
     c.dst = vaddr;
     c.src = reinterpret_cast<std::uint64_t>(src);
     c.len = len;
-    if (::ioctl(uffd_.fd(), UFFDIO_COPY, &c) != 0)
-        throw CheckpointError(std::string("prefetch: UFFDIO_COPY: ") + std::strerror(errno));
+    if (::ioctl(uffd_.fd(), UFFDIO_COPY, &c) != 0) {
+        // EEXIST is NOT benign. It means a page this code believed missing is
+        // already resident, so its model of the address space is wrong and the
+        // §9.2 invariant no longer holds. Skipping the copy and carrying on was
+        // tried, and produced a target that ran on stale memory and died with
+        // heap corruption -- silent wrongness, the worst outcome there is.
+        // §25.4: fail explicitly, never execute partially-restored state.
+        ++stats_.already_present;
+        throw CheckpointError(
+            "restore: page at " + hex(vaddr) +
+            " was already resident when prefetching " + std::to_string(len) +
+            " bytes (" + std::strerror(errno) +
+            "); the restore's model of the address space is inconsistent and "
+            "continuing would run the target on stale memory");
+    }
     return static_cast<std::uint64_t>(c.copy);
 }
 
@@ -125,8 +148,14 @@ std::uint64_t PrefetchProvider::zero_run(std::uint64_t vaddr, std::uint64_t len)
     ::uffdio_zeropage z{};
     z.range.start = vaddr;
     z.range.len = len;
-    if (::ioctl(uffd_.fd(), UFFDIO_ZEROPAGE, &z) != 0)
-        throw CheckpointError(std::string("prefetch: UFFDIO_ZEROPAGE: ") + std::strerror(errno));
+    if (::ioctl(uffd_.fd(), UFFDIO_ZEROPAGE, &z) != 0) {
+        ++stats_.already_present;
+        throw CheckpointError(
+            "restore: page at " + hex(vaddr) + " was already resident when zeroing " +
+            std::to_string(len) + " bytes (" + std::strerror(errno) +
+            "); the restore's model of the address space is inconsistent and "
+            "continuing would run the target on stale memory");
+    }
     return static_cast<std::uint64_t>(z.zeropage);
 }
 

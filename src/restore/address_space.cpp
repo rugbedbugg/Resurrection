@@ -75,6 +75,26 @@ std::unique_ptr<RestoreTarget> make_target_for(const std::vector<image::MappingR
         std::to_string(max_attempts) + " attempts");
 }
 
+void disable_huge_pages(RestoreTarget& target, std::uint64_t start, std::uint64_t end) {
+    // Transparent huge pages are fatal to a page-granular restore. With THP set
+    // to [always], writing anywhere in a large anonymous mapping lets the kernel
+    // back a 2 MiB span with one huge page, making up to 512 neighbouring 4 KiB
+    // pages resident at once. Pages the restore believes are missing then
+    // already exist: UFFDIO_COPY returns EEXIST, and a target that carries on
+    // runs partly on stale memory. Observed as heap corruption
+    // (`free(): invalid size`) before the cause was found.
+    //
+    // Applied ONLY to mappings that will actually contain a deferred region.
+    // Blanket-disabling it cost eager restore more than twice its runtime, for
+    // a hazard eager cannot encounter: it defers nothing, so no page it writes
+    // is ever expected to be missing later.
+    const long rc = target.syscall(__NR_madvise, start, end - start,
+                                   static_cast<std::uint64_t>(MADV_NOHUGEPAGE));
+    if (rc != 0 && rc != -EINVAL)  // EINVAL: kernel built without THP
+        throw CheckpointError("restore: madvise(MADV_NOHUGEPAGE) on " + hex(start) + ": " +
+                              std::strerror(static_cast<int>(-rc)));
+}
+
 LayoutResult rebuild_address_space(RestoreTarget& target, const image::ImageReader& image) {
     const auto mappings = image.mappings();
     if (collides_with_tls(target, mappings))

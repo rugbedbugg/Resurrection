@@ -30,6 +30,7 @@ struct PrefetchStats {
     std::uint64_t misses = 0;              // needed but not prefetched, so faulted
     std::uint64_t unused = 0;              // prefetched but never demanded
     std::uint64_t regions_without_history = 0;  // degraded to pure lazy
+    std::uint64_t already_present = 0;           // prefetch was a no-op; see EEXIST above
 };
 
 // Loads the historically-touched subset of a region up front and leaves the

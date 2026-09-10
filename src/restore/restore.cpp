@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <memory>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "adaptive_restore/common/error.hpp"
@@ -138,6 +139,42 @@ RestoreSummary restore_image(const image::ImageReader& image, const RestoreOptio
             break;
         }
         }
+    }
+
+    // Any 2 MiB span that will hold a deferred page must lose THP first, or the
+    // kernel can make neighbouring pages resident behind the restore's back.
+    //
+    // Scoped to the SPAN, not the whole mapping. THP works in 2 MiB units, so
+    // that is the smallest granularity that actually prevents the hazard, and
+    // disabling it mapping-wide penalises the eager regions sharing that
+    // mapping. `cost` is the only policy that mixes both in one mapping, so a
+    // mapping-wide sweep hurt precisely the policy under test: it went from
+    // beating prefetch by 16% to losing to it by 15%.
+    {
+        constexpr std::uint64_t kTHP = 2u * 1024u * 1024u;
+        std::vector<std::pair<std::uint64_t, std::uint64_t>> spans;
+        for (std::size_t i = 0; i < regions.size(); ++i) {
+            if (actions[i] == paging::RestoreAction::Eager) continue;
+            const auto& r = regions[i];
+            std::uint64_t lo = r.start_vaddr & ~(kTHP - 1);
+            std::uint64_t hi = (r.end_vaddr + kTHP - 1) & ~(kTHP - 1);
+            for (const auto& m : mappings)
+                if (r.start_vaddr >= m.start_vaddr && r.end_vaddr <= m.end_vaddr) {
+                    lo = std::max(lo, m.start_vaddr);
+                    hi = std::min(hi, m.end_vaddr);
+                    break;
+                }
+            if (hi > lo) spans.emplace_back(lo, hi);
+        }
+        std::sort(spans.begin(), spans.end());
+        std::uint64_t cur_lo = 0, cur_hi = 0;
+        for (const auto& [lo, hi] : spans) {
+            if (cur_hi == 0) { cur_lo = lo; cur_hi = hi; continue; }
+            if (lo <= cur_hi) { cur_hi = std::max(cur_hi, hi); continue; }
+            disable_huge_pages(*target, cur_lo, cur_hi);
+            cur_lo = lo; cur_hi = hi;
+        }
+        if (cur_hi > cur_lo) disable_huge_pages(*target, cur_lo, cur_hi);
     }
 
     const bool needs_uffd =
