@@ -49,7 +49,8 @@ if(SQLite3Opt_FOUND)
     message(STATUS "sqlite3 ${SQLITE3_VERSION} found: profile store enabled")
     # SQLite-gated: only these actually touch the database.
     list(APPEND AR_PROFILE_SOURCES src/profile/profile_store.cpp
-                                   src/profile/region_profiler.cpp)
+                                   src/profile/region_profiler.cpp
+                                   src/policy/metrics.cpp)
 else()
     message(STATUS "sqlite3 not found: building without the profile store "
                    "(prefetch and cost policies unavailable)")

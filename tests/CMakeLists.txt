@@ -29,6 +29,7 @@ ar_add_test(policy_engine unit/test_policy_engine.cpp)
 if(SQLite3Opt_FOUND)
     ar_add_test(profile_store unit/test_profile_store.cpp)
     ar_add_test(region_profiler unit/test_region_profiler.cpp)
+    ar_add_test(metrics unit/test_metrics.cpp)
 
     if(Compel_FOUND)
         # Phase 4 exit gate: the controller must beat every fixed policy.

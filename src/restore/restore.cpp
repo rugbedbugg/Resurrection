@@ -133,6 +133,7 @@ RestoreSummary restore_image(const image::ImageReader& image, const RestoreOptio
                                         it == by_id.end() ? nullptr : it->second);
             const auto d = engine->choose(f, policy::SystemState{opts.cold_cache});
             actions[i] = d.action;
+            out.predicted_transfer_s += d.predicted_cost;
             out.decisions.push_back(d);
             break;
         }
@@ -177,8 +178,11 @@ RestoreSummary restore_image(const image::ImageReader& image, const RestoreOptio
 
     out.resume = resume(*target, image);
     out.resume_latency_ns = monotonic_ns() - started;
+    out.pages_loaded_upfront = out.pages.pages_written + out.pages.pages_zeroed +
+                               out.pages.pages_already_zero;
     out.actions = std::move(actions);
     if (session) {
+        out.pages_loaded_upfront += session->provider->stats().pages_prefetched;
         out.lazy = session->provider->lazy_stats();
         out.prefetch = session->provider->stats();
         out.session = std::move(session);

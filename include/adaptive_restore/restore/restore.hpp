@@ -49,10 +49,12 @@ struct RestoreSummary {
     paging::LazyStats lazy;               // zero under RestorePolicy::Eager
     paging::PrefetchStats prefetch;       // zero unless a policy prefetched
     std::vector<policy::RegionDecision> decisions;  // populated under Cost
+    double predicted_transfer_s = 0.0;             // sum of the chosen arms' costs
     std::vector<paging::RestoreAction> actions;  // what each region was prepared with
     std::uint64_t regions_eager = 0;
     std::uint64_t regions_lazy = 0;
     std::uint64_t resume_latency_ns = 0;  // invocation to first resumed instruction (§22)
+    std::uint64_t pages_loaded_upfront = 0;  // written eagerly or prefetched, before resume
 
     // Under Lazy the target is running with pages still owed to it, so the
     // caller MUST drive serve() until it exits. Null under Eager.

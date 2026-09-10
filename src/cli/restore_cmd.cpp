@@ -10,6 +10,7 @@
 #include "adaptive_restore/common/version.hpp"
 #include "adaptive_restore/restore/restore.hpp"
 #ifdef AR_HAVE_SQLITE
+#include "adaptive_restore/policy/metrics.hpp"
 #include "adaptive_restore/profile/profile_store.hpp"
 #include "adaptive_restore/profile/region_profiler.hpp"
 #endif
@@ -114,6 +115,47 @@ int cmd_restore(std::span<const std::string_view> args) {
                           : "eager regions only (lazy pages are not resident yet)")
                   << '\n'
                   << "  resume     " << ms(s.resume_latency_ns) << " to first instruction\n";
+
+#ifdef AR_HAVE_SQLITE
+        // The oracle: the cheapest any policy could be with perfect per-region
+        // knowledge. Without it a win over the baselines is unanchored -- it
+        // could be most of the available headroom or a sliver of it.
+        if (!opts.profile_path.empty()) {
+            auto store = profile::ProfileStore::open(opts.profile_path);
+            profile::ProfileKey k;
+            k.image_digest = image.identity_digest();
+            k.region_layout_version = kRegionLayoutVersion;
+            k.feature_schema_version = kFeatureSchemaVersion;
+            const auto hist = store.load(k);
+            if (!hist.empty()) {
+                const auto bound = policy::oracle_bound(
+                    image, hist,
+                    opts.cold_cache ? policy::Calibration::defaults_cold()
+                                    : policy::Calibration::defaults_warm());
+                std::cout << "  oracle     " << ms(static_cast<std::uint64_t>(bound.seconds * 1e9))
+                          << " transfer bound (" << bound.regions_eager << " eager, "
+                          << bound.regions_prefetch << " prefetch, " << bound.regions_lazy
+                          << " lazy with perfect knowledge)\n";
+                // Score the chosen actions against ground truth, not against
+                // the predictions that produced them: a controller's own
+                // estimate is built from averaged history and can be
+                // optimistic, which would let a plan appear to beat the bound.
+                if (!s.actions.empty() && bound.seconds > 0) {
+                    const double realised = policy::plan_cost(
+                        image, hist, s.actions,
+                        opts.cold_cache ? policy::Calibration::defaults_cold()
+                                        : policy::Calibration::defaults_warm(),
+                        0.0);
+                    char pct[32];
+                    std::snprintf(pct, sizeof pct, "%.1f", 100.0 * bound.seconds / realised);
+                    std::cout << "  plan       "
+                              << ms(static_cast<std::uint64_t>(realised * 1e9))
+                              << " scored against ground truth, capturing " << pct
+                              << "% of the achievable gain\n";
+                }
+            }
+        }
+#endif
 
         // §12 sells this controller on being deterministic and explainable, so
         // the decisions travel with their costs. A breakdown nobody can read
