@@ -36,11 +36,11 @@ constexpr std::size_t kProbeBytes = 64u << 20;
 // The two transfer paths differ by 2.74x, which is why pricing prefetch with
 // read bandwidth made the controller choose it and lose.
 Calibration Calibration::defaults_warm() {
-    return {1505.0 * kMiB, 549.0 * kMiB, 26.2e-6, 1.72e-6, 7060.0 * kMiB};
+    return {1505.0 * kMiB, 549.0 * kMiB, 26.2e-6, 1.72e-6, 8.4e-3, 7060.0 * kMiB};
 }
 
 Calibration Calibration::defaults_cold() {
-    return {1505.0 * kMiB, 549.0 * kMiB, 26.2e-6, 1.72e-6, 1141.0 * kMiB};
+    return {1505.0 * kMiB, 549.0 * kMiB, 26.2e-6, 1.72e-6, 8.4e-3, 1141.0 * kMiB};
 }
 
 Calibration Calibration::measure(const char* image_dir) {

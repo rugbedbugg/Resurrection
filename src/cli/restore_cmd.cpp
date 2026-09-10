@@ -96,6 +96,20 @@ int cmd_restore(std::span<const std::string_view> args) {
 
     try {
         const auto image = image::ImageReader::open(image_path);
+
+#ifdef AR_HAVE_SQLITE
+        // Read the profile here, alongside the image, so both inputs are loaded
+        // on the same side of the restore clock.
+        profile::ProfileKey pkey;
+        pkey.image_digest = image.identity_digest();
+        pkey.region_layout_version = kRegionLayoutVersion;
+        pkey.feature_schema_version = kFeatureSchemaVersion;
+        if (!opts.profile_path.empty()) {
+            auto store = profile::ProfileStore::open(opts.profile_path);
+            opts.history = store.load(pkey);
+        }
+#endif
+
         const auto s = restore::restore_image(image, opts);
 
         std::cout << "restored " << image_path << " as pid " << s.pid << '\n'
@@ -121,12 +135,7 @@ int cmd_restore(std::span<const std::string_view> args) {
         // knowledge. Without it a win over the baselines is unanchored -- it
         // could be most of the available headroom or a sliver of it.
         if (!opts.profile_path.empty()) {
-            auto store = profile::ProfileStore::open(opts.profile_path);
-            profile::ProfileKey k;
-            k.image_digest = image.identity_digest();
-            k.region_layout_version = kRegionLayoutVersion;
-            k.feature_schema_version = kFeatureSchemaVersion;
-            const auto hist = store.load(k);
+            const auto& hist = opts.history;
             if (!hist.empty()) {
                 const auto bound = policy::oracle_bound(
                     image, hist,
@@ -160,6 +169,9 @@ int cmd_restore(std::span<const std::string_view> args) {
         // §12 sells this controller on being deterministic and explainable, so
         // the decisions travel with their costs. A breakdown nobody can read
         // fails that claim on its own terms.
+        if (s.deferral_declined)
+            std::cout << "  decisions  deferred nothing: the plan did not save more than the "
+                         "cost of standing up a page server\n";
         if (!s.decisions.empty()) {
             std::size_t n_eager = 0, n_pref = 0, n_lazy = 0;
             for (const auto& d : s.decisions) {

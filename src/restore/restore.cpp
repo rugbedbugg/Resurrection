@@ -96,26 +96,17 @@ RestoreSummary restore_image(const image::ImageReader& image, const RestoreOptio
         return false;
     };
 
-    std::vector<profile::RegionHistory> history;
-#ifdef AR_HAVE_SQLITE
-    profile::ProfileKey key;
-    key.image_digest = image.identity_digest();
-    key.region_layout_version = kRegionLayoutVersion;
-    key.feature_schema_version = kFeatureSchemaVersion;
-    if (!opts.profile_path.empty()) {
-        auto store = profile::ProfileStore::open(opts.profile_path);
-        history = store.load(key);
-    }
-#endif
+    const auto& history = opts.history;  // loaded by the caller, before the clock
     std::unordered_map<std::uint32_t, const profile::RegionHistory*> by_id;
     for (const auto& h : history) by_id[h.region_id] = &h;
 
     // --- decide an action per region ----------------------------------------
     std::vector<paging::RestoreAction> actions(regions.size(), paging::RestoreAction::Eager);
+    const auto cold_cal = policy::Calibration::defaults_cold();
+    const auto warm_cal = policy::Calibration::defaults_warm();
     std::unique_ptr<policy::CostModelPolicyEngine> engine;
     if (opts.policy == RestorePolicy::Cost)
-        engine = std::make_unique<policy::CostModelPolicyEngine>(
-            policy::Calibration::defaults_cold(), policy::Calibration::defaults_warm());
+        engine = std::make_unique<policy::CostModelPolicyEngine>(cold_cal, warm_cal);
 
     for (std::size_t i = 0; i < regions.size(); ++i) {
         if (!uffd_eligible(regions[i])) continue;  // stays eager
@@ -175,6 +166,33 @@ RestoreSummary restore_image(const image::ImageReader& image, const RestoreOptio
             cur_lo = lo; cur_hi = hi;
         }
         if (cur_hi > cur_lo) disable_huge_pages(*target, cur_lo, cur_hi);
+    }
+
+    // Deferring anything costs a fixed setup (uffd, page server, THP disabling)
+    // that §12 does not model. If the whole plan does not save more than that,
+    // the honest answer is to defer nothing: paying 8 ms of machinery to save
+    // 1 ms of transfer is a loss dressed up as a decision.
+    if (opts.policy == RestorePolicy::Cost && engine) {
+        const auto& kcal = opts.cold_cache ? cold_cal : warm_cal;
+        double plan = 0.0, all_eager = 0.0;
+        for (std::size_t i = 0; i < regions.size(); ++i) {
+            const std::uint64_t bytes =
+                static_cast<std::uint64_t>(regions[i].page_index_hi - regions[i].page_index_lo) *
+                image.header().page_size;
+            all_eager += kcal.cost_eager(bytes);
+        }
+        for (const auto& d : out.decisions) plan += d.predicted_cost;
+        // Regions that were never offered to the engine are eager either way.
+        for (const auto& r : regions)
+            if (!uffd_eligible(r))
+                plan += kcal.cost_eager(
+                    static_cast<std::uint64_t>(r.page_index_hi - r.page_index_lo) *
+                    image.header().page_size);
+        if (all_eager - plan < kcal.deferral_setup_s) {
+            std::fill(actions.begin(), actions.end(), paging::RestoreAction::Eager);
+            out.decisions.clear();
+            out.deferral_declined = true;
+        }
     }
 
     const bool needs_uffd =

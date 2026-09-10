@@ -10,6 +10,7 @@
 #include "adaptive_restore/restore/page_writer.hpp"
 #include "adaptive_restore/paging/prefetch_provider.hpp"
 #include "adaptive_restore/policy/region.hpp"
+#include "adaptive_restore/profile/profile_store.hpp"
 #include "adaptive_restore/restore/resume.hpp"
 #include "adaptive_restore/restore/uffd.hpp"
 
@@ -33,6 +34,12 @@ struct RestoreOptions {
     std::string profile_path;  // when set, a restore reads and teaches this profile
     bool cold_cache = true;    // calibration to use; see the calibration report
     bool learn = true;         // false: read the profile but do not write it back
+
+    // Pre-loaded region history. Loading it is input preparation, not restore
+    // work, and the image is already read before the clock starts; charging one
+    // to the restore and not the other made a cost-model run look ~10 ms slower
+    // than an eager one that did exactly the same thing.
+    std::vector<profile::RegionHistory> history;
     // Scratch area for compel. Kept far from any realistic process layout so it
     // cannot collide with an image; see docs/phase2-spike-report.md.
     std::uint64_t reserve_addr = 0x700000000000ULL;
@@ -50,6 +57,7 @@ struct RestoreSummary {
     paging::PrefetchStats prefetch;       // zero unless a policy prefetched
     std::vector<policy::RegionDecision> decisions;  // populated under Cost
     double predicted_transfer_s = 0.0;             // sum of the chosen arms' costs
+    bool deferral_declined = false;                // plan did not repay the setup cost
     std::vector<paging::RestoreAction> actions;  // what each region was prepared with
     std::uint64_t regions_eager = 0;
     std::uint64_t regions_lazy = 0;

@@ -15,6 +15,14 @@ struct Calibration {
     double mean_fault_cost_s = 0;       // per demand fault, as the TARGET sees it
     double register_cost_s = 0;         // UFFDIO_REGISTER, fixed per region
 
+    // One-time cost of enabling deferral at all: creating the uffd in the
+    // target, stealing it, arming the death signal, disabling THP on the
+    // affected spans, and running a page server for the target's lifetime.
+    // §12 has no term for this, which lets a controller defer two regions out
+    // of 283 and pay the whole setup for a saving of nothing. Measured at
+    // ~8.4 ms on this machine.
+    double deferral_setup_s = 0;
+
     // Kept for reporting: the image read is a real cost, just a policy-neutral
     // one, and §23 still wants cold and warm stated with every result.
     double sequential_bandwidth_bps = 0;
