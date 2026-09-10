@@ -29,6 +29,7 @@ if(Compel_FOUND)
     ar_add_test(address_space unit/test_address_space.cpp)
     ar_add_test(page_writer unit/test_page_writer.cpp)
     ar_add_test(resume unit/test_resume.cpp)
+    ar_add_test(restore_failures unit/test_restore_failures.cpp)
 endif()
 
 # Phase 1 exit gate: drives the real arctl binary against the real workload.
