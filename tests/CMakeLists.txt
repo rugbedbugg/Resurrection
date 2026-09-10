@@ -33,6 +33,13 @@ if(Compel_FOUND)
     ar_add_test(uffd unit/test_uffd.cpp)
     ar_add_test(lazy_provider unit/test_lazy_provider.cpp)
 
+    # Phase 3 parity: lazy must match eager, byte for byte, on the real workload.
+    ar_add_test(restore_mini_lazy integration/test_restore_mini_lazy.cpp)
+    target_compile_definitions(test_restore_mini_lazy PRIVATE
+        ARCTL_PATH="$<TARGET_FILE:arctl>"
+        MINI_PATH="$<TARGET_FILE:workload_mini>")
+    add_dependencies(test_restore_mini_lazy arctl workload_mini)
+
     # Phase 2 exit gate: real arctl, real workload, checkpoint then restore.
     ar_add_test(restore_mini integration/test_restore_mini.cpp)
     target_compile_definitions(test_restore_mini PRIVATE
