@@ -25,6 +25,10 @@ ar_add_test(registers unit/test_registers.cpp)
 ar_add_test(capture unit/test_capture.cpp)
 ar_add_test(calibration unit/test_calibration.cpp)
 
+if(SQLite3Opt_FOUND)
+    ar_add_test(profile_store unit/test_profile_store.cpp)
+endif()
+
 if(Compel_FOUND)
     ar_add_test(restore_target unit/test_restore_target.cpp)
     ar_add_test(address_space unit/test_address_space.cpp)

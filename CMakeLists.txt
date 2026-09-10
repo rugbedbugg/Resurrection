@@ -34,6 +34,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 option(AR_BUILD_TESTS "Build the test suite" ON)
 option(AR_BUILD_WORKLOADS "Build the synthetic benchmark workloads" ON)
 option(AR_FORCE_NO_COMPEL "Pretend compel is absent (exercises the no-restore build)" OFF)
+option(AR_FORCE_NO_SQLITE "Pretend SQLite is absent (exercises the no-profile build)" OFF)
 
 # --- optional: compel, for the Phase 2 restorer -----------------------------
 # Capture (checkpoint/inspect) must never depend on this. A build without compel
@@ -41,6 +42,17 @@ option(AR_FORCE_NO_COMPEL "Pretend compel is absent (exercises the no-restore bu
 if(NOT AR_FORCE_NO_COMPEL)
     find_package(Compel)
 endif()
+if(NOT AR_FORCE_NO_SQLITE)
+    find_package(SQLite3Opt)
+endif()
+if(SQLite3Opt_FOUND)
+    message(STATUS "sqlite3 ${SQLITE3_VERSION} found: profile store enabled")
+    list(APPEND AR_PROFILE_SOURCES src/profile/profile_store.cpp)
+else()
+    message(STATUS "sqlite3 not found: building without the profile store "
+                   "(prefetch and cost policies unavailable)")
+endif()
+
 if(Compel_FOUND)
     message(STATUS "compel ${COMPEL_VERSION} found: restore support enabled")
     set(AR_RESTORE_SOURCES src/restore/target.cpp src/restore/address_space.cpp src/restore/page_writer.cpp src/restore/resume.cpp src/restore/restore.cpp src/paging/eager_provider.cpp src/paging/page_locator.cpp src/paging/lazy_provider.cpp src/restore/uffd.cpp)
@@ -64,12 +76,17 @@ add_library(adaptive_restore STATIC
     src/checkpoint/regions.cpp
     src/checkpoint/capture.cpp
     src/policy/calibration.cpp
+    ${AR_PROFILE_SOURCES}
     ${AR_RESTORE_SOURCES}
 )
 target_include_directories(adaptive_restore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 if(Compel_FOUND)
     target_link_libraries(adaptive_restore PUBLIC Compel::Compel)
     target_compile_definitions(adaptive_restore PUBLIC AR_HAVE_COMPEL)
+endif()
+if(SQLite3Opt_FOUND)
+    target_link_libraries(adaptive_restore PUBLIC SQLite::SQLite3)
+    target_compile_definitions(adaptive_restore PUBLIC AR_HAVE_SQLITE)
 endif()
 target_compile_features(adaptive_restore PUBLIC cxx_std_20)
 

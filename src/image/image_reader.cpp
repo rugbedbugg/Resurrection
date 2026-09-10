@@ -10,6 +10,7 @@
 
 #include "adaptive_restore/common/byte_cursor.hpp"
 #include "adaptive_restore/common/crc32c.hpp"
+#include "adaptive_restore/common/sha256.hpp"
 #include "adaptive_restore/common/error.hpp"
 
 namespace adaptive_restore::image {
@@ -276,6 +277,37 @@ std::vector<FdRecord> ImageReader::fds() const {
         out.push_back(std::move(f));
     }
     return out;
+}
+
+std::array<std::byte, 32> ImageReader::identity_digest() const {
+    std::vector<std::byte> material;
+    const auto push = [&material](const void* p, std::size_t n) {
+        const auto* b = static_cast<const std::byte*>(p);
+        material.insert(material.end(), b, b + n);
+    };
+
+    const std::uint32_t page_size = header_.page_size;
+    push(&page_size, sizeof page_size);
+    push(header_.launch_env_digest.data(), header_.launch_env_digest.size());
+
+    // Layout plus backing-file identity: what the image *is*, not when it was
+    // taken. Page contents are excluded; a region's data changes run to run
+    // while its identity does not.
+    for (const auto& m : mappings()) {
+        push(&m.flags, sizeof m.flags);
+        push(&m.start_vaddr, sizeof m.start_vaddr);
+        push(&m.end_vaddr, sizeof m.end_vaddr);
+        push(&m.file_offset, sizeof m.file_offset);
+        push(&m.dev, sizeof m.dev);
+        push(&m.ino, sizeof m.ino);
+        push(m.path.data(), m.path.size());
+    }
+    for (const auto& r : regions()) {
+        push(&r.region_id, sizeof r.region_id);
+        push(&r.start_vaddr, sizeof r.start_vaddr);
+        push(&r.end_vaddr, sizeof r.end_vaddr);
+    }
+    return sha256(material);
 }
 
 std::span<const std::byte> ImageReader::page_bytes(const PageIndexRecord& rec) const {

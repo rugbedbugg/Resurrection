@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -36,6 +37,12 @@ public:
     // re-checked (throws on mismatch). Zero: a page_size span of zero bytes.
     // Omitted: throws ImageError.
     std::span<const std::byte> page_bytes(const PageIndexRecord& rec) const;
+
+    // Stable identity of what this image describes (§16.1): the address-space
+    // layout and the binaries behind it. Deliberately excludes the original pid
+    // and capture timestamp, so two checkpoints of the same program at the same
+    // point share a profile instead of each starting from no history.
+    std::array<std::byte, 32> identity_digest() const;
 
 private:
     ImageReader() = default;
