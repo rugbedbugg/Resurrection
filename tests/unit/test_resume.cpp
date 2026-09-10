@@ -88,6 +88,9 @@ int main() {
     w.add_page({kStack, 0, 0, PageEncoding::Zero, 0}, {});
 
     // fd 3 is a plain file at a known offset; fd 1 exercises the dup2-down path.
+    w.add_region({0, 0, kCode, kCode + 4096, 0, 1});
+    w.add_region({0, 1, kStack, kStack + 4096, 1, 2});
+
     w.add_fd({3, O_RDWR, 100, static_cast<std::uint64_t>(fst.st_dev),
               static_cast<std::uint64_t>(fst.st_ino), tmpl});
     w.add_fd({1, O_RDWR, 0, 0, 0, "/dev/null"});
@@ -146,6 +149,7 @@ int main() {
         w2.add_mapping({0, MappingFlag::Read | MappingFlag::Write | MappingFlag::ContentsSaved,
                         kCode, kCode + 4096, 0, 0, 0, ""});
         w2.add_page({kCode, 0, 0, PageEncoding::Zero, 0}, {});
+        w2.add_region({0, 0, kCode, kCode + 4096, 0, 1});
         w2.add_fd({3, O_RDONLY, 0, 0xdead, 0xbeef, "/usr/lib/libc.so.6"});
         auto b2 = w2.serialize_to_bytes();
         auto img2 = ImageReader::from_bytes(b2);

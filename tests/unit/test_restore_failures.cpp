@@ -43,9 +43,11 @@ static std::vector<std::byte> image_with(const MappingRecord& m, PageEncoding en
     w.set_header(h);
     w.set_registers(RegisterRecord{});
     w.add_mapping(m);
-    for (std::uint64_t a = m.start_vaddr; a < m.end_vaddr; a += 4096)
+    std::uint32_t n = 0;
+    for (std::uint64_t a = m.start_vaddr; a < m.end_vaddr; a += 4096, ++n)
         w.add_page({a, 0, 0, enc, 0}, enc == PageEncoding::Raw ? std::span<const std::byte>(payload)
                                                                : std::span<const std::byte>{});
+    w.add_region({0, 0, m.start_vaddr, m.end_vaddr, 0, n});
     return w.serialize_to_bytes();
 }
 
@@ -147,6 +149,7 @@ int main() {
         w.set_registers(rr);
         w.add_mapping(anon);
         w.add_page({kAnon, 0, 0, PageEncoding::Raw, 0}, page);
+        w.add_region({0, 0, kAnon, kAnon + 4096, 0, 1});
         auto bytes = w.serialize_to_bytes();
 
         auto img = ImageReader::from_bytes(bytes);

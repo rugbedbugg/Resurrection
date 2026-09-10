@@ -70,6 +70,12 @@ int main() {
     // the page is explicitly cleared the process would see stale file bytes.
     w.add_page({kFile, 0, 0, PageEncoding::Zero, 0}, {});
 
+    // Regions are how the restore dispatches work; a real capture always emits
+    // them, so a synthetic image must too.
+    w.add_region({0, 0, kAnon, kAnon + 4 * 4096, 0, 4});
+    w.add_region({0, 1, kRo, kRo + 4096, 4, 5});
+    w.add_region({0, 2, kFile, kFile + 4096, 5, 6});
+
     auto bytes = w.serialize_to_bytes();
     auto image = ImageReader::from_bytes(bytes);
 
@@ -136,6 +142,7 @@ int main() {
         w2.add_mapping({0, MappingFlag::Read | MappingFlag::Write | MappingFlag::ContentsSaved,
                         kAnon, kAnon + 4096, 0, 0, 0, ""});
         w2.add_page({kAnon, 0, 0, PageEncoding::Omitted, 0}, {});
+        w2.add_region({0, 0, kAnon, kAnon + 4096, 0, 1});
         auto b2 = w2.serialize_to_bytes();
         auto img2 = ImageReader::from_bytes(b2);
         auto t2 = make_target_for(img2.mappings(), kReserve, kReserveBytes);
