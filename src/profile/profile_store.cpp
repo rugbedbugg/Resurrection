@@ -58,9 +58,13 @@ ProfileStore ProfileStore::open(const std::filesystem::path& path) {
         throw CheckpointError("profile: cannot open " + path.string() + ": " + msg);
     }
 
-    // Durability over speed: a profile is written once per restore, and a
-    // half-written one is worse than none.
-    s.impl_->exec("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;");
+    // WAL + NORMAL, not FULL. A torn write is still impossible (that is what
+    // the transaction is for); what NORMAL gives up is durability of the last
+    // commit across a power cut. For advisory learning data that costs one
+    // restore's observations, which the next restore replaces anyway, and FULL
+    // was measured at ~7 ms per restore: a quarter of total restore time spent
+    // fsyncing data we would happily recompute.
+    s.impl_->exec("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;");
     s.impl_->exec(
         "CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);"
         "CREATE TABLE IF NOT EXISTS region_history ("

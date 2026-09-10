@@ -30,12 +30,17 @@ constexpr std::size_t kProbeBytes = 64u << 20;
 
 }  // namespace
 
+// Measured on this machine; see docs/phase4-calibration-report.md.
+//   process_vm_writev  1505 MiB/s      UFFDIO_COPY  549 MiB/s
+//   mean fault         26.2 us         UFFDIO_REGISTER  1.72 us/region
+// The two transfer paths differ by 2.74x, which is why pricing prefetch with
+// read bandwidth made the controller choose it and lose.
 Calibration Calibration::defaults_warm() {
-    return {7060.0 * kMiB, 7060.0 * kMiB, 26.2e-6};
+    return {1505.0 * kMiB, 549.0 * kMiB, 26.2e-6, 1.72e-6, 7060.0 * kMiB};
 }
 
 Calibration Calibration::defaults_cold() {
-    return {1141.0 * kMiB, 1141.0 * kMiB, 26.2e-6};
+    return {1505.0 * kMiB, 549.0 * kMiB, 26.2e-6, 1.72e-6, 1141.0 * kMiB};
 }
 
 Calibration Calibration::measure(const char* image_dir) {
@@ -72,29 +77,28 @@ Calibration Calibration::measure(const char* image_dir) {
     ::close(fd);
     ::unlink(tmpl.data());
 
-    if (cold_dt > 0 && total > 0) out.sequential_bandwidth_bps = static_cast<double>(total) / cold_dt;
-    if (warm_dt > 0 && warm_total > 0)
-        out.effective_bandwidth_bps = static_cast<double>(warm_total) / warm_dt;
-    else
-        out.effective_bandwidth_bps = out.sequential_bandwidth_bps;
+    if (cold_dt > 0 && total > 0)
+        out.sequential_bandwidth_bps = static_cast<double>(total) / cold_dt;
+    (void)warm_dt;
+    (void)warm_total;
+    // The transfer-path figures are not measurable without a live target, so
+    // the calibrated defaults stand until a restore measures them in situ.
     return out;
 }
 
 double Calibration::cost_eager(std::uint64_t bytes) const {
-    if (sequential_bandwidth_bps <= 0) return 0;
-    return static_cast<double>(bytes) / sequential_bandwidth_bps;
+    if (writev_bandwidth_bps <= 0) return 0;
+    return static_cast<double>(bytes) / writev_bandwidth_bps;
 }
 
 double Calibration::cost_lazy(std::uint64_t expected_faults) const {
-    return static_cast<double>(expected_faults) * mean_fault_cost_s;
+    return register_cost_s + static_cast<double>(expected_faults) * mean_fault_cost_s;
 }
 
 double Calibration::cost_prefetch(std::uint64_t prefetch_bytes, std::uint64_t miss_faults,
                                   std::uint64_t wasted_bytes, double lambda_waste) const {
-    const double bw = effective_bandwidth_bps > 0 ? effective_bandwidth_bps
-                                                  : sequential_bandwidth_bps;
-    if (bw <= 0) return 0;
-    return static_cast<double>(prefetch_bytes) / bw +
+    if (uffd_copy_bandwidth_bps <= 0) return 0;
+    return register_cost_s + static_cast<double>(prefetch_bytes) / uffd_copy_bandwidth_bps +
            static_cast<double>(miss_faults) * mean_fault_cost_s +
            lambda_waste * static_cast<double>(wasted_bytes);
 }

@@ -32,6 +32,7 @@ struct RestoreOptions {
     std::string trace_path;    // when set, the demand-fault trace is written here
     std::string profile_path;  // when set, a restore reads and teaches this profile
     bool cold_cache = true;    // calibration to use; see the calibration report
+    bool learn = true;         // false: read the profile but do not write it back
     // Scratch area for compel. Kept far from any realistic process layout so it
     // cannot collide with an image; see docs/phase2-spike-report.md.
     std::uint64_t reserve_addr = 0x700000000000ULL;

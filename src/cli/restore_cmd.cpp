@@ -40,6 +40,11 @@ int cmd_restore(std::span<const std::string_view> args) {
         const std::string_view a = args[i];
         if (a == "--verify") {
             opts.verify = true;
+        } else if (a == "--no-learn") {
+            // Bookkeeping is not restore work. Counting a profile write inside
+            // a policy comparison charges the adaptive policies for something
+            // the fixed ones never do.
+            opts.learn = false;
         } else if (a == "--cold-cache") {
             opts.cold_cache = true;
         } else if (a == "--warm-cache") {
@@ -64,7 +69,7 @@ int cmd_restore(std::span<const std::string_view> args) {
     if (image_path.empty())
         return fail("usage: arctl restore --image <image> --policy eager|lazy "
                     "[--verify] [--record-trace <path>] [--profile <db>] "
-                    "[--cold-cache|--warm-cache]");
+                    "[--cold-cache|--warm-cache] [--no-learn]");
     if (policy == "eager") {
         opts.policy = restore::RestorePolicy::Eager;
     } else if (policy == "lazy") {
@@ -192,7 +197,7 @@ int cmd_restore(std::span<const std::string_view> args) {
 #ifdef AR_HAVE_SQLITE
             // Only a restore that deferred pages can teach: a page that was
             // written up front never faults, so nothing observes it.
-            if (!opts.profile_path.empty()) {
+            if (!opts.profile_path.empty() && opts.learn) {
                 const auto observed = profile::observe_regions(
                     image, s.session->provider->trace(), s.actions);
                 profile::ProfileKey key;

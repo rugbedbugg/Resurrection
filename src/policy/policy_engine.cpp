@@ -10,8 +10,7 @@ CostModelPolicyEngine::CostModelPolicyEngine(Calibration cold, Calibration warm,
                                              double lambda_waste)
     : cold_(cold), warm_(warm), lambda_waste_(lambda_waste) {
     if (lambda_waste_ < 0.0) {
-        const double bw = cold_.effective_bandwidth_bps > 0 ? cold_.effective_bandwidth_bps
-                                                            : cold_.sequential_bandwidth_bps;
+        const double bw = cold_.uffd_copy_bandwidth_bps;
         lambda_waste_ = bw > 0 ? 1.0 / bw : 0.0;
     }
 }

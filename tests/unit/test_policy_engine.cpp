@@ -60,17 +60,37 @@ int main() {
         assert(std::isinf(d.cost_prefetch) && "nothing recorded means nothing to prefetch");
     }
 
-    // --- cache state must change the answer, not just the numbers ----------
-    // Calibration measured a 6x shift in the crossover. A region touched at 8%
-    // is worth faulting when reads are slow and worth reading when they are not.
+    // --- cache state no longer changes the decision, and that is correct ---
+    // ImageReader loads the whole image at open under every policy, so read
+    // bandwidth cancels out. What differentiates the arms is how bytes reach
+    // the target (process_vm_writev vs UFFDIO_COPY vs a fault round trip), and
+    // none of that depends on the page cache.
     {
         const auto f = region(0.08f, 0, 10);
         const auto c = engine.choose(f, cold);
         const auto w = engine.choose(f, warm);
-        assert(c.action == RestoreAction::Lazy);
-        assert(w.action == RestoreAction::Eager &&
-               "warm, reading the whole region is cheaper than faulting 5 times");
-        assert(c.cost_eager > w.cost_eager && "a cold read costs more than a warm one");
+        assert(c.action == w.action &&
+               "the transfer path is the same whether the image was cached or not");
+        assert(c.cost_eager == w.cost_eager);
+    }
+
+    // --- the crossover sits where the measured costs put it ----------------
+    // C_eager for a 256 KiB region is ~166us at 1505 MiB/s; a fault is ~26us.
+    // So lazy should win below roughly 6 of 64 pages and lose above it.
+    {
+        assert(engine.choose(region(0.06f, 0, 10), cold).action == RestoreAction::Lazy);
+        assert(engine.choose(region(0.20f, 0, 10), cold).action == RestoreAction::Eager);
+    }
+
+    // --- prefetching a known page must beat faulting for it ----------------
+    // A fault is a round trip; a prefetch is a copy. If this inverted, static
+    // prefetch could never pay for itself and §11.2 would be unreachable.
+    {
+        const auto known = engine.choose(region(0.10f, 6, 10), cold);
+        const auto blind = engine.choose(region(0.10f, 0, 10), cold);
+        assert(known.action == RestoreAction::StaticPrefetch);
+        assert(known.predicted_cost < blind.predicted_cost &&
+               "knowing which pages are needed must be worth something");
     }
 
     // --- the losing arms travel with the winner (§12 explainability) -------
