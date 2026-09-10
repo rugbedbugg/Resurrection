@@ -16,7 +16,9 @@ inline constexpr const char* kProjectVersion = "0.2.0";
 
 // Checkpoint image: 8-byte magic + format version (§7.2).
 inline constexpr unsigned char kImageMagic[8] = {'A', 'R', 'I', 'M', 'G', '\0', '\0', '\1'};
-inline constexpr int kImageFormatVersion = 1;
+// v2 added PageEncoding::FromFile: pages identical to their backing file are
+// referenced rather than stored. v1 images are not readable by this build.
+inline constexpr int kImageFormatVersion = 2;
 
 // Region-layout + feature-schema versions travel in the profile key (§16.1).
 inline constexpr int kRegionLayoutVersion = 1;

@@ -108,7 +108,7 @@ int cmd_inspect(std::span<const std::string_view> args) {
                       << l.page_index_hi << ")\n";
         }
 
-        std::uint64_t raw = 0, zero = 0, omitted = 0, stored = 0;
+        std::uint64_t raw = 0, zero = 0, omitted = 0, from_file = 0, stored = 0;
         for (const auto& p : ir.page_index()) {
             switch (p.encoding) {
             case image::PageEncoding::Raw:
@@ -117,12 +117,14 @@ int cmd_inspect(std::span<const std::string_view> args) {
                 break;
             case image::PageEncoding::Zero: ++zero; break;
             case image::PageEncoding::Omitted: ++omitted; break;
+            case image::PageEncoding::FromFile: ++from_file; break;
             }
         }
-        std::cout << "\npages (" << (raw + zero + omitted) << ")\n"
-                  << "  raw      " << raw << "  (" << stored << " bytes stored)\n"
-                  << "  zero     " << zero << '\n'
-                  << "  omitted  " << omitted << '\n';
+        std::cout << "\npages (" << (raw + zero + omitted + from_file) << ")\n"
+                  << "  raw       " << raw << "  (" << stored << " bytes stored)\n"
+                  << "  zero      " << zero << '\n'
+                  << "  fromfile  " << from_file << "  (referenced, not stored)\n"
+                  << "  omitted   " << omitted << '\n';
 
         const auto fds = ir.fds();
         std::cout << "\nfds (" << fds.size() << ")\n";

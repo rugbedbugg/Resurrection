@@ -93,8 +93,11 @@ void ImageReader::verify() const {
         throw ImageError("image: bad magic");
 
     // 2. Version + fixed fields.
-    if (read_u32(8) != static_cast<std::uint32_t>(kImageFormatVersion))
-        throw ImageError("image: unsupported format_version");
+    const std::uint32_t got_version = read_u32(8);
+    if (got_version != static_cast<std::uint32_t>(kImageFormatVersion))
+        throw ImageError("image: unsupported format_version " + std::to_string(got_version) +
+                         " (this build reads v" + std::to_string(kImageFormatVersion) +
+                         "); re-checkpoint the workload");
     if (read_u32(12) != kHeaderSize)
         throw ImageError("image: header_size does not match kHeaderSize");
     const std::uint32_t ps = header_.page_size;
@@ -294,6 +297,9 @@ std::span<const std::byte> ImageReader::page_bytes(const PageIndexRecord& rec) c
     }
     case PageEncoding::Omitted:
         throw ImageError("image: page_bytes() on an omitted page @ vaddr " + hex(rec.vaddr));
+    case PageEncoding::FromFile:
+        throw ImageError("image: page @ vaddr " + hex(rec.vaddr) +
+                         " is stored by reference; its content lives in the backing file");
     }
     throw ImageError("image: page index record has an unknown encoding");
 }

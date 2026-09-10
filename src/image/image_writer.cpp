@@ -72,7 +72,9 @@ void ImageWriter::add_page(PageIndexRecord rec, std::span<const std::byte> raw_o
             throw CheckpointError("ImageWriter::add_page: non-Raw page given a payload");
         rec.store_offset = 0;
         rec.store_len = 0;
-        rec.crc32c = 0;
+        // FromFile keeps the checksum of the real content so a restore can
+        // verify what the page cache handed back; the others carry none.
+        if (rec.encoding != PageEncoding::FromFile) rec.crc32c = 0;
     }
     pidx_.push_back(rec);
 }

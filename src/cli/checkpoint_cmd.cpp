@@ -98,8 +98,9 @@ int cmd_checkpoint(std::span<const std::string_view> args) {
                   << "  mappings   " << res.mappings_saved << " saved / " << res.mappings_total
                   << " total\n"
                   << "  regions    " << res.regions_created << '\n'
-                  << "  pages      " << res.pages_saved << " (" << res.zero_pages << " zero)\n"
-                  << "  page data  " << res.bytes_saved << " bytes\n"
+                  << "  pages      " << res.pages_saved << " (" << res.zero_pages << " zero, "
+                  << res.file_pages << " from file)\n"
+                  << "  page data  " << res.bytes_saved << " bytes stored\n"
                   << "  fds        " << res.fds_saved << '\n'
                   << "  verify     " << (verify ? "0 mismatches" : "skipped") << '\n';
 

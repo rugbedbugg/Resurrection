@@ -84,6 +84,14 @@ PopulateResult populate_pages(RestoreTarget& target, const image::ImageReader& i
             throw CheckpointError("restore: page at " + hex(p.vaddr) +
                                   " was omitted at capture; eager restore cannot supply it");
 
+        if (p.encoding == image::PageEncoding::FromFile) {
+            // The mapping was created from the same file, so the page cache
+            // already holds this content. Writing it would be pure waste.
+            ++res.pages_from_file;
+            ++i;
+            continue;
+        }
+
         if (p.encoding == image::PageEncoding::Zero) {
             if (is_file_backed(p.vaddr)) {
                 write_range(target.pid(), p.vaddr, zero_page.data(), zero_page.size());
@@ -141,9 +149,19 @@ PopulateResult populate_pages(RestoreTarget& target, const image::ImageReader& i
         if (!readable) continue;
 
         read_range(target.pid(), p.vaddr, back.data(), back.size());
+        if (p.encoding == image::PageEncoding::FromFile) {
+            // The mapping was created from the same file, so the page cache
+            // already holds this content. Writing it would be pure waste.
+            ++res.pages_from_file;
+            ++i;
+            continue;
+        }
+
         if (p.encoding == image::PageEncoding::Zero) {
             if (crc32c(back) != crc32c(zero_page)) ++res.verify_mismatches;
         } else if (crc32c(back) != p.crc32c) {
+            // Covers FromFile too: this is what proves the page cache handed
+            // back exactly what was captured.
             ++res.verify_mismatches;
         }
     }

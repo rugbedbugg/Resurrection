@@ -13,6 +13,7 @@ struct PopulateResult {
     std::uint64_t pages_written = 0;      // Raw pages copied in
     std::uint64_t pages_zeroed = 0;       // Zero pages explicitly cleared
     std::uint64_t pages_already_zero = 0; // Zero pages in fresh anonymous memory
+    std::uint64_t pages_from_file = 0;    // supplied by the backing file, not written
     std::uint64_t bytes_written = 0;
     std::uint64_t writev_calls = 0;       // syscalls actually issued
     std::uint64_t mappings_protected = 0;

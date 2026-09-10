@@ -92,10 +92,17 @@ enum class PageEncoding : std::uint8_t {
     Raw = 0,
     Zero = 1,
     Omitted = 2,
+    // Byte-identical to the backing file at
+    // mapping.file_offset + (vaddr - mapping.start_vaddr), so no bytes are
+    // stored: creating the mapping from that file already supplies the page
+    // through the page cache. crc32c still covers the real content, so a
+    // restore can verify it. Only valid inside a FileBacked mapping.
+    FromFile = 3,
 };
 
 // One page of the address space. For Raw pages store_offset/store_len/crc32c are
-// filled by the writer; for Zero/Omitted they are 0.
+// filled by the writer; for Zero/Omitted/FromFile store_offset and store_len are
+// 0 (FromFile still carries a meaningful crc32c).
 struct PageIndexRecord {
     std::uint64_t vaddr = 0, store_offset = 0;
     std::uint32_t store_len = 0;

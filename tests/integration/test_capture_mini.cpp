@@ -74,13 +74,30 @@ int main() {
         assert(r.page_index_hi > r.page_index_lo);
         assert(r.page_index_hi <= pidx.size());
     }
-    std::uint64_t raw = 0, zero = 0;
+    std::uint64_t raw = 0, zero = 0, from_file = 0;
     for (const auto& p : pidx) {
+        if (p.encoding == PageEncoding::FromFile) {
+            // Content lives in the backing file, so page_bytes cannot serve it.
+            ++from_file;
+            assert(p.store_len == 0);
+            continue;
+        }
         const auto bytes = ir.page_bytes(p);  // throws on CRC mismatch
         assert(bytes.size() == ir.header().page_size);
         if (p.encoding == PageEncoding::Raw) ++raw; else ++zero;
     }
     assert(raw > 0 && zero > 0 && "the workload should yield both raw and zero pages");
+    assert(from_file > raw && "most of a dynamically linked image is unmodified library text");
+
+    // File-page referencing is what keeps the image small; guard it here so a
+    // regression shows up as a failing test rather than a fatter image.
+    {
+        std::ifstream f(img, std::ios::binary | std::ios::ate);
+        const auto size = static_cast<std::uint64_t>(f.tellg());
+        const std::uint64_t mapped = pidx.size() * ir.header().page_size;
+        assert(size < mapped / 4 &&
+               "a referenced image must be far smaller than the address space it describes");
+    }
 
     // The target's own stdout was redirected beside the image; checkpointing
     // must not perturb the run, so it has to match the uninterrupted baseline.

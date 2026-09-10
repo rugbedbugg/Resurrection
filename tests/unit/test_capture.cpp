@@ -74,7 +74,10 @@ int main() {
     assert(res.mappings_total > res.mappings_saved);  // vdso/vvar recorded, not saved
     assert(res.regions_created > 0);
     assert(res.fds_saved > 0);
-    assert(res.bytes_saved == (res.pages_saved - res.zero_pages) * 4096);
+    // Stored bytes cover only Raw pages: Zero and FromFile carry no payload.
+    assert(res.bytes_saved == (res.pages_saved - res.zero_pages - res.file_pages) * 4096);
+    // The child's mappings include libc, so some pages must be referenced.
+    assert(res.file_pages > 0 && "file-backed pages matching their file must be referenced");
 
     // The image round-trips and validates.
     auto bytes = w.serialize_to_bytes();
@@ -86,6 +89,16 @@ int main() {
 
     const auto pidx = ir.page_index();
     assert(pidx.size() == res.pages_saved);
+
+    // A referenced page stores nothing but keeps a checksum of the real content.
+    std::uint64_t referenced = 0;
+    for (const auto& p : pidx)
+        if (p.encoding == PageEncoding::FromFile) {
+            ++referenced;
+            assert(p.store_len == 0 && p.store_offset == 0);
+            assert(p.crc32c != 0 && "a referenced page must keep its content checksum");
+        }
+    assert(referenced == res.file_pages);
 
     // Both of the child's known pages are present, with the right contents.
     bool pattern_ok = false, zero_ok = false;

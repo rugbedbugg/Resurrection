@@ -20,6 +20,7 @@ struct CaptureResult {
     std::uint64_t regions_created = 0;
     std::uint64_t pages_saved = 0;      // page index records written
     std::uint64_t zero_pages = 0;       // subset stored as PageEncoding::Zero
+    std::uint64_t file_pages = 0;       // subset referenced, not stored (FromFile)
     std::uint64_t bytes_saved = 0;      // raw page payload actually stored
     std::uint64_t fds_saved = 0;
     std::uint64_t verify_mismatches = 0;  // always 0 unless opts.verify

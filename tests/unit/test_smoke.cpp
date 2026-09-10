@@ -8,7 +8,9 @@
 int main() {
     using namespace adaptive_restore;
 
-    static_assert(kImageFormatVersion == 1);
+    // Canary: bump deliberately when the on-disk format changes.
+    // v2 added PageEncoding::FromFile (file-page referencing).
+    static_assert(kImageFormatVersion == 2);
     static_assert(kDefaultRegionBytes % 4096 == 0, "region size must be page-aligned");
     static_assert(sizeof(kImageMagic) == 8, "image magic is 8 bytes (§7.2)");
 

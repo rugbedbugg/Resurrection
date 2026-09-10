@@ -1,10 +1,13 @@
 #include "adaptive_restore/checkpoint/capture.hpp"
 
+#include <fcntl.h>
 #include <sys/utsname.h>
+#include <unistd.h>
 #include <time.h>
 
 #include <cstdio>
 #include <span>
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -27,6 +30,34 @@ struct PageWitness {
     std::uint64_t vaddr;
     std::uint32_t crc;
     image::PageEncoding encoding;
+};
+
+// Reads a file-backed mapping's own bytes so capture can tell which of its
+// pages still match the file on disk. Those need not be stored: creating the
+// mapping from that file supplies them through the page cache.
+class BackingFile {
+public:
+    explicit BackingFile(const std::string& path)
+        : fd_(path.empty() ? -1 : ::open(path.c_str(), O_RDONLY | O_CLOEXEC)) {}
+    ~BackingFile() { if (fd_ >= 0) ::close(fd_); }
+    BackingFile(const BackingFile&) = delete;
+    BackingFile& operator=(const BackingFile&) = delete;
+
+    bool usable() const { return fd_ >= 0; }
+
+    // True when [offset, offset+len) of the file equals `page`. A short read
+    // (the mapping runs past EOF) counts as a mismatch, so the page is stored.
+    bool matches(std::uint64_t offset, std::span<const std::byte> page) {
+        if (fd_ < 0) return false;
+        buf_.resize(page.size());
+        const ssize_t n = ::pread(fd_, buf_.data(), buf_.size(), static_cast<off_t>(offset));
+        if (n != static_cast<ssize_t>(page.size())) return false;
+        return std::memcmp(buf_.data(), page.data(), page.size()) == 0;
+    }
+
+private:
+    int fd_;
+    std::vector<std::byte> buf_;
 };
 
 std::uint32_t mapping_flags(const Mapping& m) {
@@ -115,6 +146,11 @@ CaptureResult capture(pid_t pid, const std::array<std::byte, 32>& launch_digest,
         for_subdivide.mapping_id = mapping_id;
         auto regions = subdivide(for_subdivide, next_region_id);
 
+        // Only a file-backed mapping can reference its pages instead of storing
+        // them, and only if the file is still readable at capture time.
+        const bool referencable = (m.kind == MapKind::FileBacked) && !m.path.empty();
+        BackingFile backing(referencable ? m.path : std::string());
+
         for (image::RegionRecord& r : regions) {
             r.page_index_lo = static_cast<std::uint32_t>(page_counter);
 
@@ -128,10 +164,20 @@ CaptureResult capture(pid_t pid, const std::array<std::byte, 32>& launch_digest,
                 image::PageIndexRecord p;
                 p.vaddr = r.start_vaddr + off;
 
+                const std::uint64_t file_offset =
+                    m.file_offset + (p.vaddr - m.start);
+
                 if (page_is_zero(page)) {
                     p.encoding = image::PageEncoding::Zero;
                     out.add_page(p, {});
                     ++res.zero_pages;
+                } else if (backing.usable() && backing.matches(file_offset, page)) {
+                    // Stored by reference: the checksum still covers the real
+                    // content so a restore can verify what it got back.
+                    p.encoding = image::PageEncoding::FromFile;
+                    p.crc32c = crc32c(page);
+                    out.add_page(p, {});
+                    ++res.file_pages;
                 } else {
                     p.encoding = image::PageEncoding::Raw;
                     out.add_page(p, page);
