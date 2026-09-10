@@ -80,6 +80,7 @@ add_library(adaptive_restore STATIC
     src/checkpoint/regions.cpp
     src/checkpoint/capture.cpp
     src/policy/calibration.cpp
+    src/policy/policy_engine.cpp
     ${AR_PROFILE_SOURCES}
     ${AR_RESTORE_SOURCES}
 )
