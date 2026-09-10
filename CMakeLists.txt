@@ -42,7 +42,11 @@ target_include_directories(adaptive_restore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/i
 target_compile_features(adaptive_restore PUBLIC cxx_std_20)
 
 # --- arctl CLI --------------------------------------------------------------
-add_executable(arctl src/cli/main.cpp)
+add_executable(arctl
+    src/cli/main.cpp
+    src/cli/checkpoint_cmd.cpp
+    src/cli/inspect_cmd.cpp
+)
 target_link_libraries(arctl PRIVATE adaptive_restore)
 
 if(AR_BUILD_TESTS)

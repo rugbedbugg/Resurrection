@@ -8,8 +8,9 @@ working-set prefetch, or lazy paging — instead of applying one strategy to the
 whole process. A low-overhead analytical cost model makes the per-region choice
 and is calibrated against measured I/O and page-fault costs.
 
-**Status:** Phase 0 complete (environment verified). Phase 1 (checkpoint image +
-capture) in progress.
+**Status:** Phase 1 complete. `arctl checkpoint` captures a stopped
+single-threaded target into a verified `.arimg`, and `arctl inspect` reads it
+back. Phase 2 (restore) is next.
 
 Design drafts, phase reports, and specs live in `docs/` — a local, untracked
 working folder. This README is the only committed prose.
@@ -44,6 +45,23 @@ cmake -B build -G Ninja
 cmake --build build
 ctest --test-dir build
 ```
+
+## Usage
+
+`arctl` spawns its target rather than attaching to a running pid: `ptrace_scope`
+normally forbids attaching to a non-descendant, and the target needs ASLR off
+plus a curated environment for saved absolute addresses to be reproducible. Mark
+the snapshot point in the workload with `ar_checkpoint_here()` from
+`include/adaptive_restore/marker.h`, then:
+
+```sh
+arctl checkpoint --verify --output run.arimg -- ./build/workloads/workload_mini
+arctl inspect --image run.arimg
+```
+
+`--verify` re-reads every captured page from the live process and re-checksums
+it against the first pass; a mismatch leaves no image behind. The target's
+stdout and stderr are redirected to `<output>.stdout` / `<output>.stderr`.
 
 Phase 0 feasibility probes build separately:
 

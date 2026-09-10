@@ -24,6 +24,13 @@ ar_add_test(regions unit/test_regions.cpp)
 ar_add_test(registers unit/test_registers.cpp)
 ar_add_test(capture unit/test_capture.cpp)
 
+# Phase 1 exit gate: drives the real arctl binary against the real workload.
+ar_add_test(capture_mini integration/test_capture_mini.cpp)
+target_compile_definitions(test_capture_mini PRIVATE
+    ARCTL_PATH="$<TARGET_FILE:arctl>"
+    MINI_PATH="$<TARGET_FILE:workload_mini>")
+add_dependencies(test_capture_mini arctl workload_mini)
+
 # test_spawn launches this helper, so it needs the built path at compile time.
 add_executable(helper_marker_target unit/helper_marker_target.c)
 target_include_directories(helper_marker_target PRIVATE ${CMAKE_SOURCE_DIR}/include)
