@@ -25,7 +25,7 @@ int usage(std::ostream& os) {
        << "usage: arctl <command> [options]\n\n"
        << "commands:\n"
        << "  checkpoint [--verify] [--env K=V] --output <image> -- <cmd> [args...]\n"
-       << "  restore    --image <image> --policy eager|lazy|prefetch|cost [--profile <db>]\n"
+       << "  restore    --image <image> --policy eager [--verify]\n"
        << "  inspect    --image <image>\n"
        << "  profile    show|reset --image <image>\n"
        << "  benchmark  --suite <suite.yaml> --output <results-dir>\n"
@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
 
     if (cmd == "restore") {
 #ifdef AR_HAVE_COMPEL
-        return not_implemented(cmd);
+        return adaptive_restore::cli::cmd_restore(rest);
 #else
         return no_restore_support();
 #endif

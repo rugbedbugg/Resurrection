@@ -1,0 +1,83 @@
+#include <sys/wait.h>
+
+#include <cstdint>
+#include <iostream>
+#include <string>
+
+#include "adaptive_restore/cli/commands.hpp"
+#include "adaptive_restore/image/image_reader.hpp"
+#include "adaptive_restore/restore/restore.hpp"
+
+namespace adaptive_restore::cli {
+
+namespace {
+
+int fail(const std::string& msg) {
+    std::cerr << "arctl restore: " << msg << '\n';
+    return 1;
+}
+
+std::string ms(std::uint64_t ns) {
+    char b[32];
+    std::snprintf(b, sizeof b, "%.2f ms", static_cast<double>(ns) / 1e6);
+    return std::string(b);
+}
+
+}  // namespace
+
+int cmd_restore(std::span<const std::string_view> args) {
+    std::string image_path;
+    std::string policy = "eager";
+    restore::RestoreOptions opts;
+
+    for (std::size_t i = 0; i < args.size(); ++i) {
+        const std::string_view a = args[i];
+        if (a == "--verify") {
+            opts.verify = true;
+        } else if (a == "--image" || a == "--policy") {
+            if (i + 1 >= args.size()) return fail(std::string(a) + " needs a value");
+            const std::string value(args[++i]);
+            if (a == "--image")
+                image_path = value;
+            else
+                policy = value;
+        } else {
+            return fail("unknown option '" + std::string(a) + "'");
+        }
+    }
+
+    if (image_path.empty())
+        return fail("usage: arctl restore --image <image> --policy eager [--verify]");
+    if (policy != "eager")
+        return fail("policy '" + policy +
+                    "' is not implemented yet; Phase 2 provides --policy eager only");
+
+    try {
+        const auto image = image::ImageReader::open(image_path);
+        const auto s = restore::restore_eager(image, opts);
+
+        std::cout << "restored " << image_path << " as pid " << s.pid << '\n'
+                  << "  mappings   " << s.layout.created << " recreated, "
+                  << s.layout.skipped_kernel << " kernel-provided\n"
+                  << "  pages      " << s.pages.pages_written << " written, "
+                  << (s.pages.pages_zeroed + s.pages.pages_already_zero) << " zero\n"
+                  << "  page data  " << s.pages.bytes_written << " bytes in "
+                  << s.pages.writev_calls << " writes\n"
+                  << "  fds        " << s.resume.fds_restored << " restored\n"
+                  << "  verify     " << (opts.verify ? "0 mismatches" : "skipped") << '\n'
+                  << "  resume     " << ms(s.resume_latency_ns) << " to first instruction\n";
+
+        int st = 0;
+        if (::waitpid(s.pid, &st, 0) == s.pid) {
+            if (WIFEXITED(st))
+                std::cout << "  target     exited " << WEXITSTATUS(st) << '\n';
+            else if (WIFSIGNALED(st))
+                std::cout << "  target     killed by signal " << WTERMSIG(st) << '\n';
+        }
+    } catch (const std::exception& e) {
+        return fail(e.what());
+    }
+    return 0;
+}
+
+}  // namespace adaptive_restore::cli
