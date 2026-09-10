@@ -43,7 +43,7 @@ if(NOT AR_FORCE_NO_COMPEL)
 endif()
 if(Compel_FOUND)
     message(STATUS "compel ${COMPEL_VERSION} found: restore support enabled")
-    set(AR_RESTORE_SOURCES src/restore/target.cpp src/restore/address_space.cpp src/restore/page_writer.cpp)
+    set(AR_RESTORE_SOURCES src/restore/target.cpp src/restore/address_space.cpp src/restore/page_writer.cpp src/restore/resume.cpp)
 else()
     message(STATUS "compel not found: building without restore support "
                    "(checkpoint and inspect are unaffected)")
