@@ -30,6 +30,13 @@ if(Compel_FOUND)
     ar_add_test(page_writer unit/test_page_writer.cpp)
     ar_add_test(resume unit/test_resume.cpp)
     ar_add_test(restore_failures unit/test_restore_failures.cpp)
+
+    # Phase 2 exit gate: real arctl, real workload, checkpoint then restore.
+    ar_add_test(restore_mini integration/test_restore_mini.cpp)
+    target_compile_definitions(test_restore_mini PRIVATE
+        ARCTL_PATH="$<TARGET_FILE:arctl>"
+        MINI_PATH="$<TARGET_FILE:workload_mini>")
+    add_dependencies(test_restore_mini arctl workload_mini)
 endif()
 
 # Phase 1 exit gate: drives the real arctl binary against the real workload.
