@@ -43,6 +43,7 @@ if(NOT AR_FORCE_NO_COMPEL)
 endif()
 if(Compel_FOUND)
     message(STATUS "compel ${COMPEL_VERSION} found: restore support enabled")
+    set(AR_RESTORE_SOURCES src/restore/target.cpp)
 else()
     message(STATUS "compel not found: building without restore support "
                    "(checkpoint and inspect are unaffected)")
@@ -62,8 +63,13 @@ add_library(adaptive_restore STATIC
     src/checkpoint/registers.cpp
     src/checkpoint/regions.cpp
     src/checkpoint/capture.cpp
+    ${AR_RESTORE_SOURCES}
 )
 target_include_directories(adaptive_restore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+if(Compel_FOUND)
+    target_link_libraries(adaptive_restore PUBLIC Compel::Compel)
+    target_compile_definitions(adaptive_restore PUBLIC AR_HAVE_COMPEL)
+endif()
 target_compile_features(adaptive_restore PUBLIC cxx_std_20)
 
 # --- arctl CLI --------------------------------------------------------------

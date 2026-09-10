@@ -24,6 +24,10 @@ ar_add_test(regions unit/test_regions.cpp)
 ar_add_test(registers unit/test_registers.cpp)
 ar_add_test(capture unit/test_capture.cpp)
 
+if(Compel_FOUND)
+    ar_add_test(restore_target unit/test_restore_target.cpp)
+endif()
+
 # Phase 1 exit gate: drives the real arctl binary against the real workload.
 ar_add_test(capture_mini integration/test_capture_mini.cpp)
 target_compile_definitions(test_capture_mini PRIVATE
