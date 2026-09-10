@@ -34,20 +34,23 @@ int cmd_restore(std::span<const std::string_view> args) {
         const std::string_view a = args[i];
         if (a == "--verify") {
             opts.verify = true;
-        } else if (a == "--image" || a == "--policy") {
+        } else if (a == "--image" || a == "--policy" || a == "--record-trace") {
             if (i + 1 >= args.size()) return fail(std::string(a) + " needs a value");
             const std::string value(args[++i]);
             if (a == "--image")
                 image_path = value;
-            else
+            else if (a == "--policy")
                 policy = value;
+            else
+                opts.trace_path = value;
         } else {
             return fail("unknown option '" + std::string(a) + "'");
         }
     }
 
     if (image_path.empty())
-        return fail("usage: arctl restore --image <image> --policy eager [--verify]");
+        return fail("usage: arctl restore --image <image> --policy eager|lazy "
+                    "[--verify] [--record-trace <path>]");
     if (policy == "eager") {
         opts.policy = restore::RestorePolicy::Eager;
     } else if (policy == "lazy") {
@@ -95,6 +98,14 @@ int cmd_restore(std::span<const std::string_view> args) {
                 std::cout << "  untouched  " << (ls.pages_registered - served.faults_served)
                           << " of " << ls.pages_registered
                           << " registered pages were never demanded\n";
+            if (ls.faults_served > 0)
+                std::cout << "  latency    " << (ls.service_ns_total / ls.faults_served)
+                          << " ns mean per fault, " << ls.service_ns_total << " ns total\n";
+            if (!opts.trace_path.empty()) {
+                s.session->provider->write_trace(opts.trace_path);
+                std::cout << "  trace      " << s.session->provider->trace().size()
+                          << " faults written to " << opts.trace_path << '\n';
+            }
             st = served.exit_status;
             reaped = served.target_exited;
         }

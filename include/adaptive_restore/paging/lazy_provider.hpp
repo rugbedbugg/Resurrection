@@ -2,6 +2,8 @@
 #include <sys/types.h>
 
 #include <cstdint>
+#include <string>
+#include <vector>
 
 #include "adaptive_restore/paging/page_locator.hpp"
 #include "adaptive_restore/paging/page_provider.hpp"
@@ -13,6 +15,19 @@ class ImageReader;
 
 namespace adaptive_restore::paging {
 
+// One demand fault, as it happened. Under pure lazy every first touch faults,
+// so a full trace IS the workload's touched set -- the ground truth Phase 4
+// measures waste and coverage against, and the reason this is designed here
+// rather than when the benchmark harness is written.
+struct FaultRecord {
+    std::uint64_t vaddr = 0;
+    std::uint32_t region_id = 0;
+    std::uint64_t offset_ns = 0;      // since serving began
+    std::uint64_t service_ns = 0;     // time spent resolving this fault
+    std::uint32_t bytes = 0;          // supplied from the image (0 for a zero page)
+    std::uint8_t encoding = 0;        // image::PageEncoding
+};
+
 struct LazyStats {
     std::uint64_t regions_registered = 0;
     std::uint64_t faults_served = 0;
@@ -20,6 +35,7 @@ struct LazyStats {
     std::uint64_t zero_faults = 0;   // resolved with UFFDIO_ZEROPAGE
     std::uint64_t bytes_supplied = 0;
     std::uint64_t pages_registered = 0;
+    std::uint64_t service_ns_total = 0;
 };
 
 // Writes nothing before the target resumes; every page arrives as a demand
@@ -33,12 +49,25 @@ public:
 
     const PageLocator& locator() const { return locator_; }
     const LazyStats& stats() const { return stats_; }
+    const std::vector<FaultRecord>& trace() const { return trace_; }
+
+    // Keep a per-fault trace. Off by default: a long run can fault a lot, and
+    // the recording itself must not distort what it measures.
+    void record_trace(bool on) { recording_ = on; }
+
+    // Write the trace as TSV. Debuggable by design (§7 "debuggability over
+    // compression"): this file is read by humans and by the analysis scripts,
+    // not by the restorer.
+    void write_trace(const std::string& path) const;
 
 private:
     const image::ImageReader& image_;
     restore::Userfault& uffd_;
     PageLocator locator_;
     LazyStats stats_;
+    std::vector<FaultRecord> trace_;
+    bool recording_ = false;
+    std::uint64_t serving_started_ns_ = 0;
 };
 
 struct ServeResult {

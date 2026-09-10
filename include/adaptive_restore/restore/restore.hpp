@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 
 #include "adaptive_restore/restore/address_space.hpp"
 #include "adaptive_restore/restore/page_writer.hpp"
@@ -24,6 +25,7 @@ enum class RestorePolicy {
 struct RestoreOptions {
     bool verify = false;
     RestorePolicy policy = RestorePolicy::Eager;
+    std::string trace_path;  // when set, the demand-fault trace is written here
     // Scratch area for compel. Kept far from any realistic process layout so it
     // cannot collide with an image; see docs/phase2-spike-report.md.
     std::uint64_t reserve_addr = 0x700000000000ULL;

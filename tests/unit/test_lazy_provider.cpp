@@ -9,6 +9,8 @@
 #include <cassert>
 #include <cstdio>
 #include <cstring>
+#include <fstream>
+#include <string>
 #include <vector>
 
 #include "adaptive_restore/checkpoint/proc_mem.hpp"
@@ -72,6 +74,7 @@ int main() {
                                        static_cast<std::uint64_t>(-1), 0);
     assert(static_cast<std::uint64_t>(mapped) == kLazy);
 
+    provider.record_trace(true);
     provider.prepare_region(0, RestoreAction::Lazy);
     assert(provider.stats().regions_registered == 1);
     assert(provider.stats().pages_registered == 2);
@@ -106,6 +109,35 @@ int main() {
            "the served page must carry the image's bytes");
     mem.read_range(kLazy + 4096, 4096, got);
     assert(checkpoint::page_is_zero(got) && "the zero page must arrive zeroed");
+
+    // The trace is the touched set Phase 4 measures waste and coverage against,
+    // so it must record what was actually served, in order.
+    const auto& tr = provider.trace();
+    assert(tr.size() == 2);
+    assert(tr[0].vaddr == kLazy && tr[1].vaddr == kLazy + 4096);
+    assert(tr[0].bytes == 4096 && "a raw page reports the bytes supplied");
+    assert(tr[1].bytes == 0 && "a zero page supplies no bytes from the image");
+    assert(tr[0].encoding == static_cast<std::uint8_t>(PageEncoding::Raw));
+    assert(tr[1].encoding == static_cast<std::uint8_t>(PageEncoding::Zero));
+    assert(tr[1].offset_ns >= tr[0].offset_ns && "offsets must be monotonic");
+    assert(provider.stats().service_ns_total > 0);
+
+    // It must survive a round trip through the file the analysis reads.
+    char trace_tmpl[] = "/tmp/artraceXXXXXX";
+    const int tfd = ::mkstemp(trace_tmpl);
+    assert(tfd >= 0);
+    ::close(tfd);
+    provider.write_trace(trace_tmpl);
+    {
+        std::ifstream f(trace_tmpl);
+        std::string line;
+        assert(std::getline(f, line) && line.rfind("vaddr\tregion", 0) == 0);
+        int rows = 0;
+        while (std::getline(f, line))
+            if (!line.empty()) ++rows;
+        assert(rows == 2 && "one row per served fault");
+    }
+    ::unlink(trace_tmpl);
 
     // A fault outside the image must be reported, not guessed at.
     bool threw = false;

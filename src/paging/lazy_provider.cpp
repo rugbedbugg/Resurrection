@@ -10,6 +10,8 @@
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
+#include <fstream>
+#include <time.h>
 #include <string>
 
 #include "adaptive_restore/common/error.hpp"
@@ -46,7 +48,30 @@ void LazyProvider::prepare_region(std::uint32_t region_id, RestoreAction action)
     stats_.pages_registered += r.page_index_hi - r.page_index_lo;
 }
 
+namespace {
+std::uint64_t monotonic_ns() {
+    ::timespec ts{};
+    ::clock_gettime(CLOCK_MONOTONIC, &ts);
+    return static_cast<std::uint64_t>(ts.tv_sec) * 1000000000ull +
+           static_cast<std::uint64_t>(ts.tv_nsec);
+}
+}  // namespace
+
+void LazyProvider::write_trace(const std::string& path) const {
+    std::ofstream f(path);
+    if (!f) throw CheckpointError("restore: cannot write the fault trace to " + path);
+    f << "vaddr\tregion\toffset_ns\tservice_ns\tbytes\tencoding\n";
+    for (const auto& r : trace_)
+        f << "0x" << std::hex << r.vaddr << std::dec << '\t' << r.region_id << '\t'
+          << r.offset_ns << '\t' << r.service_ns << '\t' << r.bytes << '\t'
+          << static_cast<unsigned>(r.encoding) << '\n';
+    if (!f) throw CheckpointError("restore: failed while writing the fault trace to " + path);
+}
+
 void LazyProvider::service_fault(const PageRequest& request) {
+    const std::uint64_t began = monotonic_ns();
+    if (serving_started_ns_ == 0) serving_started_ns_ = began;
+
     const std::size_t idx = locator_.find(request.virtual_address);
     if (idx == PageLocator::npos)
         throw CheckpointError("restore: fault at " + hex(request.virtual_address) +
@@ -91,6 +116,15 @@ void LazyProvider::service_fault(const PageRequest& request) {
                               " was omitted at capture and cannot be supplied");
     }
     ++stats_.faults_served;
+
+    const std::uint64_t ended = monotonic_ns();
+    stats_.service_ns_total += ended - began;
+    if (recording_)
+        trace_.push_back({p.vaddr, request.region_id, began - serving_started_ns_,
+                          ended - began,
+                          static_cast<std::uint32_t>(
+                              p.encoding == image::PageEncoding::Raw ? page_size : 0),
+                          static_cast<std::uint8_t>(p.encoding)});
 }
 
 ServeResult serve_faults(restore::Userfault& uffd, PageProvider& provider,

@@ -25,7 +25,7 @@ int usage(std::ostream& os) {
        << "usage: arctl <command> [options]\n\n"
        << "commands:\n"
        << "  checkpoint [--verify] [--env K=V] --output <image> -- <cmd> [args...]\n"
-       << "  restore    --image <image> --policy eager [--verify]\n"
+       << "  restore    --image <image> --policy eager|lazy [--verify] [--record-trace <p>]\n"
        << "  inspect    --image <image>\n"
        << "  profile    show|reset --image <image>\n"
        << "  benchmark  --suite <suite.yaml> --output <results-dir>\n"
