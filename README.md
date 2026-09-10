@@ -8,15 +8,15 @@ working-set prefetch, or lazy paging — instead of applying one strategy to the
 whole process. A low-overhead analytical cost model makes the per-region choice
 and is calibrated against measured I/O and page-fault costs.
 
-**Status:** Phase 4 complete. `arctl checkpoint` captures a stopped
+**Status:** Phase 5 complete. `arctl checkpoint` captures a stopped
 single-threaded target into a verified `.arimg`, `arctl inspect` reads it back,
 and `arctl restore` brings the process back and resumes it at the saved
 instruction under either `--policy eager` (populate everything up front) or
 `--policy lazy` (register anonymous regions with `userfaultfd` and serve pages
 on demand), `--policy prefetch` (load the working set recorded by earlier
 restores), or `--policy cost` (choose per 256 KiB region from an analytical cost
-model calibrated against this machine). Phase 5 (benchmark suite and visualizer)
-is next.
+model calibrated against this machine). `arctl benchmark` runs the workload
+suite and `arctl visualize` draws the result.
 
 On a workload with regions of genuinely different access behaviour, `--policy
 cost` beats every fixed policy by a median of ~16% and captures ~100% of the
@@ -80,7 +80,17 @@ arctl restore --image run.arimg --policy lazy --record-trace faults.tsv --profil
 arctl restore --image run.arimg --policy cost --profile p.db
 arctl profile show --image run.arimg --profile p.db
 arctl benchmark --suite experiments/bench/tier1.suite --output experiments/raw
+arctl visualize --results experiments/raw
+arctl visualize --image run.arimg --profile p.db --policy cost
+arctl visualize --trace faults.tsv
 ```
+
+`arctl visualize` only reads what other commands left behind, so it never
+perturbs a measurement and it builds in every configuration. `--results` draws
+median resume latency per policy per workload; `--image` draws the region map of
+the plan a restore *would* choose, from the same `plan_restore()` the restorer
+calls, so the picture cannot drift from the behaviour; `--trace` draws when
+demand faults arrived.
 
 A restore under a deferring policy teaches the profile; later restores of the
 same checkpoint identity read it back. `--profile` needs SQLite, which like

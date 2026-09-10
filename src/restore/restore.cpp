@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <memory>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -12,7 +11,7 @@
 #include "adaptive_restore/image/image_reader.hpp"
 #include "adaptive_restore/common/version.hpp"
 #include "adaptive_restore/paging/eager_provider.hpp"
-#include "adaptive_restore/policy/policy_engine.hpp"
+#include "adaptive_restore/policy/plan.hpp"
 #ifdef AR_HAVE_SQLITE
 #include "adaptive_restore/profile/profile_store.hpp"
 #endif
@@ -36,42 +35,6 @@ paging::ServeResult LazySession::serve(pid_t target_pid) {
 
 namespace {
 
-// Build the Tier 1 feature set (§10.1) for one region, from what the image says
-// and what the profile remembers.
-policy::RegionFeatures features_for(const image::RegionRecord& r,
-                                    const std::vector<image::MappingRecord>& mappings,
-                                    const std::vector<image::PageIndexRecord>& pages,
-                                    std::uint32_t page_size,
-                                    const profile::RegionHistory* h) {
-    policy::RegionFeatures f;
-    f.region_id = r.region_id;
-    f.pages = r.page_index_hi - r.page_index_lo;
-    f.page_size = page_size;
-
-    for (const auto& m : mappings)
-        if (r.start_vaddr >= m.start_vaddr && r.end_vaddr <= m.end_vaddr) {
-            f.file_backed = (m.flags & image::MappingFlag::FileBacked) != 0;
-            f.executable = (m.flags & image::MappingFlag::Exec) != 0;
-            f.stack_or_heap = m.path == "[stack]" || m.path == "[heap]";
-            break;
-        }
-
-    std::uint32_t zero = 0;
-    for (std::uint32_t p = r.page_index_lo; p < r.page_index_hi && p < pages.size(); ++p)
-        if (pages[p].encoding == image::PageEncoding::Zero) ++zero;
-    f.zero_page_fraction = f.pages ? static_cast<float>(zero) / static_cast<float>(f.pages) : 0.0f;
-
-    if (h) {
-        f.fraction_accessed_avg = h->fraction_accessed_avg;
-        f.restore_count = h->restore_count;
-        std::uint32_t ws = 0;
-        for (std::uint32_t p = 0; p < f.pages; ++p)
-            if (h->page_was_touched(p)) ++ws;
-        f.recorded_working_set = ws;
-    }
-    return f;
-}
-
 }  // namespace
 
 RestoreSummary restore_image(const image::ImageReader& image, const RestoreOptions& opts) {
@@ -85,82 +48,16 @@ RestoreSummary restore_image(const image::ImageReader& image, const RestoreOptio
 
     const auto regions = image.regions();
     const auto mappings = image.mappings();
-    const auto pages = image.page_index();
-    const auto ranges = lazy_ranges(image);
-
-    // Only private anonymous regions can be served by userfaultfd MISSING mode,
-    // so everything else is eager no matter what the policy asks for.
-    const auto uffd_eligible = [&ranges](const image::RegionRecord& r) {
-        for (const auto& lr : ranges)
-            if (r.start_vaddr >= lr.start && r.end_vaddr <= lr.end) return true;
-        return false;
-    };
-
     const auto& history = opts.history;  // loaded by the caller, before the clock
-    std::unordered_map<std::uint32_t, const profile::RegionHistory*> by_id;
-    for (const auto& h : history) by_id[h.region_id] = &h;
 
     // --- decide an action per region ----------------------------------------
-    std::vector<paging::RestoreAction> actions(regions.size(), paging::RestoreAction::Eager);
-    const auto cold_cal = policy::Calibration::defaults_cold();
-    const auto warm_cal = policy::Calibration::defaults_warm();
-    std::unique_ptr<policy::CostModelPolicyEngine> engine;
-    if (opts.policy == RestorePolicy::Cost)
-        engine = std::make_unique<policy::CostModelPolicyEngine>(cold_cal, warm_cal);
-
-    for (std::size_t i = 0; i < regions.size(); ++i) {
-        if (!uffd_eligible(regions[i])) continue;  // stays eager
-        switch (opts.policy) {
-        case RestorePolicy::Eager:
-            break;
-        case RestorePolicy::Lazy:
-            actions[i] = paging::RestoreAction::Lazy;
-            break;
-        case RestorePolicy::Prefetch:
-            actions[i] = paging::RestoreAction::StaticPrefetch;
-            break;
-        case RestorePolicy::Cost: {
-            const auto it = by_id.find(regions[i].region_id);
-            const auto f = features_for(regions[i], mappings, pages, image.header().page_size,
-                                        it == by_id.end() ? nullptr : it->second);
-            const auto d = engine->choose(f, policy::SystemState{opts.cold_cache});
-            actions[i] = d.action;
-            out.predicted_transfer_s += d.predicted_cost;
-            out.decisions.push_back(d);
-            break;
-        }
-        }
-    }
-
-    // Deferring anything costs a fixed setup (uffd, page server, THP disabling)
-    // that §12 does not model. If the whole plan does not save more than that,
-    // the honest answer is to defer nothing: paying 8 ms of machinery to save
-    // 1 ms of transfer is a loss dressed up as a decision.
-    if (opts.policy == RestorePolicy::Cost && engine) {
-        const auto& kcal = opts.cold_cache ? cold_cal : warm_cal;
-        double plan = 0.0, all_eager = 0.0;
-        for (std::size_t i = 0; i < regions.size(); ++i) {
-            const std::uint64_t bytes =
-                static_cast<std::uint64_t>(regions[i].page_index_hi - regions[i].page_index_lo) *
-                image.header().page_size;
-            all_eager += kcal.cost_eager(bytes);
-        }
-        for (const auto& d : out.decisions) plan += d.predicted_cost;
-        // Regions that were never offered to the engine are eager either way.
-        for (const auto& r : regions)
-            if (!uffd_eligible(r))
-                plan += kcal.cost_eager(
-                    static_cast<std::uint64_t>(r.page_index_hi - r.page_index_lo) *
-                    image.header().page_size);
-        if (all_eager - plan < kcal.deferral_setup_s) {
-            std::fill(actions.begin(), actions.end(), paging::RestoreAction::Eager);
-            out.decisions.clear();
-            // The prediction must describe the plan that actually runs, not the
-            // one just discarded.
-            out.predicted_transfer_s = all_eager;
-            out.deferral_declined = true;
-        }
-    }
+    // The whole plan comes from the policy layer, so `arctl visualize` can draw
+    // exactly what a restore would do without re-deriving any of it.
+    const auto plan = policy::plan_restore(image, history, opts.policy, opts.cold_cache);
+    auto actions = plan.actions;
+    out.decisions = plan.decisions;
+    out.predicted_transfer_s = plan.predicted_transfer_s;
+    out.deferral_declined = plan.deferral_declined;
 
     // Runs AFTER the decline gate above: the gate can revert every action to
     // Eager, and disabling THP for a plan that is then discarded leaves the

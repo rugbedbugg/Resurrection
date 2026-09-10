@@ -9,6 +9,7 @@ namespace adaptive_restore::cli {
 int cmd_checkpoint(std::span<const std::string_view> args);
 int cmd_inspect(std::span<const std::string_view> args);
 int cmd_benchmark(std::span<const std::string_view> args);
+int cmd_visualize(std::span<const std::string_view> args);
 
 #ifdef AR_HAVE_COMPEL
 // Only built when compel is available; see cmake/FindCompel.cmake.

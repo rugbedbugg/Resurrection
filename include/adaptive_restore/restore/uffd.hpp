@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "adaptive_restore/image/format.hpp"
+#include "adaptive_restore/paging/lazy_ranges.hpp"
 #include "adaptive_restore/restore/target.hpp"
 
 namespace adaptive_restore::image {
@@ -11,18 +12,11 @@ class ImageReader;
 
 namespace adaptive_restore::restore {
 
-struct LazyRange {
-    std::uint64_t start = 0, end = 0;
-    std::uint32_t mapping_id = 0;
-};
-
-// Which of an image's mappings can be served by userfaultfd MISSING mode.
-//
-// Only private anonymous mappings whose contents were saved. File-backed
-// mappings are excluded: MISSING mode does not apply to them, and they are
-// already demand-paged by the kernel from their own file. Kernel-special and
-// no-access mappings carry nothing to serve.
-std::vector<LazyRange> lazy_ranges(const image::ImageReader& image);
+// Both now live in the paging layer, so the policy layer and `arctl visualize`
+// can reason about lazy eligibility without needing compel. Re-exported here
+// because every restore-side caller already includes this header.
+using paging::LazyRange;
+using paging::lazy_ranges;
 
 // The target's userfaultfd, created inside it and driven from here.
 //

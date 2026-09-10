@@ -9,6 +9,7 @@
 #include "adaptive_restore/restore/address_space.hpp"
 #include "adaptive_restore/restore/page_writer.hpp"
 #include "adaptive_restore/paging/prefetch_provider.hpp"
+#include "adaptive_restore/policy/plan.hpp"
 #include "adaptive_restore/policy/region.hpp"
 #include "adaptive_restore/profile/profile_store.hpp"
 #include "adaptive_restore/restore/resume.hpp"
@@ -20,12 +21,9 @@ class ImageReader;
 
 namespace adaptive_restore::restore {
 
-enum class RestorePolicy {
-    Eager,     // every page written before the target resumes (§9.3)
-    Lazy,      // anonymous regions registered and served on demand (§9.4)
-    Prefetch,  // load the recorded working set, fault for the rest (§9.5)
-    Cost,      // choose per region from the cost model (§12)
-};
+// Defined in the policy layer, where the decisions are made; restore only
+// carries them out. Aliased so callers keep spelling it restore::RestorePolicy.
+using policy::RestorePolicy;
 
 struct RestoreOptions {
     bool verify = false;

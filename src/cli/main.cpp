@@ -1,8 +1,8 @@
 // arctl -- command-line front end for adaptive-restore.
 //
-// Command surface follows docs/design-draft-v2.md §18. Every subcommand is
-// currently a stub returning ENOSYS; they are filled in phase by phase (§20):
-//   Phase 1: checkpoint, inspect  (implemented)
+// Command surface follows docs/design-draft-v2.md §18, filled in phase by
+// phase (§20). All of Tier 1 is now implemented:
+//   Phase 1: checkpoint, inspect
 //   Phase 2: restore --policy eager
 //   Phase 3: restore --policy lazy
 //   Phase 4: restore --policy prefetch|cost, profile show/reset
@@ -43,11 +43,6 @@ int no_restore_support() {
 }
 #endif
 
-int not_implemented(std::string_view cmd) {
-    std::cerr << "arctl: '" << cmd << "' is not implemented yet (" << std::strerror(ENOSYS) << ")\n";
-    return ENOSYS;
-}
-
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -79,7 +74,7 @@ int main(int argc, char** argv) {
 #endif
     }
     if (cmd == "benchmark") return adaptive_restore::cli::cmd_benchmark(rest);
-    if (cmd == "visualize") return not_implemented(cmd);
+    if (cmd == "visualize") return adaptive_restore::cli::cmd_visualize(rest);
 
     std::cerr << "arctl: unknown command '" << cmd << "'\n\n";
     return usage(std::cerr);

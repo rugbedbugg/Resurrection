@@ -32,22 +32,6 @@ bool overlaps(std::uint64_t a0, std::uint64_t a1, std::uint64_t b0, std::uint64_
 
 }  // namespace
 
-std::vector<LazyRange> lazy_ranges(const image::ImageReader& image) {
-    std::vector<LazyRange> out;
-    for (const auto& m : image.mappings()) {
-        if (!(m.flags & image::MappingFlag::ContentsSaved)) continue;
-        if (m.flags & image::MappingFlag::KernelSpecial) continue;
-        if (m.flags & image::MappingFlag::Shared) continue;   // MISSING mode is private-only
-        if (m.flags & image::MappingFlag::FileBacked) continue;
-        // NB: do NOT filter on a non-empty path here. [heap] and [stack] carry
-        // their kernel tag in the path field while being ordinary private
-        // anonymous memory, and excluding them leaves the largest lazy
-        // candidates in the image being restored eagerly for no reason.
-        out.push_back({m.start_vaddr, m.end_vaddr, m.mapping_id});
-    }
-    return out;
-}
-
 Userfault::Userfault(RestoreTarget& target)
     : reserve_start_(target.reserve_addr()),
       reserve_end_(target.reserve_addr() + target.reserve_bytes()),
