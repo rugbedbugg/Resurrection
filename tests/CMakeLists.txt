@@ -29,6 +29,16 @@ ar_add_test(policy_engine unit/test_policy_engine.cpp)
 if(SQLite3Opt_FOUND)
     ar_add_test(profile_store unit/test_profile_store.cpp)
     ar_add_test(region_profiler unit/test_region_profiler.cpp)
+
+    if(Compel_FOUND)
+        # Phase 4 exit gate: the controller must beat every fixed policy.
+        ar_add_test(cost_model_gate integration/test_cost_model_gate.cpp)
+        target_compile_definitions(test_cost_model_gate PRIVATE
+            ARCTL_PATH="$<TARGET_FILE:arctl>"
+            MIXED_PATH="$<TARGET_FILE:workload_mixed_regions>")
+        add_dependencies(test_cost_model_gate arctl workload_mixed_regions)
+        set_tests_properties(cost_model_gate PROPERTIES TIMEOUT 300)
+    endif()
 endif()
 
 if(Compel_FOUND)
