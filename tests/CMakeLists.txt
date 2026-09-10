@@ -31,6 +31,7 @@ if(Compel_FOUND)
     ar_add_test(resume unit/test_resume.cpp)
     ar_add_test(restore_failures unit/test_restore_failures.cpp)
     ar_add_test(uffd unit/test_uffd.cpp)
+    ar_add_test(lazy_provider unit/test_lazy_provider.cpp)
 
     # Phase 2 exit gate: real arctl, real workload, checkpoint then restore.
     ar_add_test(restore_mini integration/test_restore_mini.cpp)
