@@ -38,6 +38,21 @@ void cont_or_throw(pid_t pid, int sig, const char* where) {
                               "): " + std::strerror(errno));
 }
 
+// Close all descriptors above 2 except `keep`. Runs in the forked child, so it
+// sticks to raw syscalls.
+void close_inherited_fds(int keep) {
+    const unsigned k = static_cast<unsigned>(keep);
+    // Two ranges so `keep` survives. The low range is empty when keep is 3.
+    const bool low_ok = (k <= 3) || ::close_range(3, k - 1, 0) == 0;
+    if (low_ok && ::close_range(k + 1, ~0U, 0) == 0) return;
+
+    // close_range is Linux 5.9+; fall back to a bounded sweep.
+    long max_fd = ::sysconf(_SC_OPEN_MAX);
+    if (max_fd < 0 || max_fd > 65536) max_fd = 65536;
+    for (int fd = 3; fd < static_cast<int>(max_fd); ++fd)
+        if (fd != keep) ::close(fd);
+}
+
 void kill_and_reap(pid_t pid) {
     ::kill(pid, SIGKILL);
     int st = 0;
@@ -71,7 +86,7 @@ std::array<std::byte, 32> launch_digest(const std::vector<std::string>& argv,
 }
 
 SpawnedTarget spawn_to_marker(const std::vector<std::string>& argv, const EnvPolicy& policy,
-                              int stdout_fd, int stderr_fd) {
+                              int stdout_fd, int stderr_fd, int stdin_fd) {
     if (argv.empty()) throw CheckpointError("spawn: empty argv");
 
     const std::vector<std::string> envp = build_env(policy);
@@ -107,8 +122,20 @@ SpawnedTarget spawn_to_marker(const std::vector<std::string>& argv, const EnvPol
         // Saved absolute addresses only reproduce with layout randomisation off.
         if (::personality(ADDR_NO_RANDOMIZE) == -1) die(errno);
         if (::ptrace(PTRACE_TRACEME, 0, nullptr, nullptr) != 0) die(errno);
-        if (stdout_fd >= 0 && ::dup2(stdout_fd, STDOUT_FILENO) < 0) die(errno);
-        if (stderr_fd >= 0 && ::dup2(stderr_fd, STDERR_FILENO) < 0) die(errno);
+
+        // Give the target a determined fd table. A descriptor left at -1 gets
+        // /dev/null rather than whatever arctl happened to be holding.
+        const int null_fd = ::open("/dev/null", O_RDWR);
+        if (null_fd < 0) die(errno);
+        const int std_fds[3] = {stdin_fd, stdout_fd, stderr_fd};
+        for (int i = 0; i < 3; ++i) {
+            const int src = (std_fds[i] >= 0) ? std_fds[i] : null_fd;
+            if (src != i && ::dup2(src, i) < 0) die(errno);
+        }
+
+        // Drop every inherited descriptor above 2, sparing the exec-error pipe
+        // (which is O_CLOEXEC and so closes itself once exec succeeds).
+        close_inherited_fds(err_fd);
 
         // Stop so the parent can install ptrace options before exec runs.
         ::raise(SIGSTOP);

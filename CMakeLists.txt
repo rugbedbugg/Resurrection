@@ -36,6 +36,7 @@ add_library(adaptive_restore STATIC
     src/checkpoint/spawn.cpp
     src/checkpoint/registers.cpp
     src/checkpoint/regions.cpp
+    src/checkpoint/capture.cpp
 )
 target_include_directories(adaptive_restore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_features(adaptive_restore PUBLIC cxx_std_20)
