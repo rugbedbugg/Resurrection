@@ -12,6 +12,9 @@ class ImageReader;
 
 namespace adaptive_restore::restore {
 
+// Recorded mapping flags -> PROT_* bits.
+int prot_of(std::uint32_t mapping_flags);
+
 struct LayoutResult {
     std::uint64_t evicted = 0;          // stub mappings torn down
     std::uint64_t created = 0;          // image mappings recreated

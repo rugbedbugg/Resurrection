@@ -29,14 +29,6 @@ bool overlaps(std::uint64_t a0, std::uint64_t a1, std::uint64_t b0, std::uint64_
     return a0 < b1 && b0 < a1;
 }
 
-int prot_of(std::uint32_t flags) {
-    int p = 0;
-    if (flags & image::MappingFlag::Read) p |= PROT_READ;
-    if (flags & image::MappingFlag::Write) p |= PROT_WRITE;
-    if (flags & image::MappingFlag::Exec) p |= PROT_EXEC;
-    return p;
-}
-
 // The target needs the path in its own address space to call openat, so it is
 // staged into the reserve. Paths are bounded by the reserve's spare room.
 std::uint64_t stage_path(RestoreTarget& t, const std::string& path, std::uint64_t scratch_at) {
@@ -52,6 +44,14 @@ std::uint64_t stage_path(RestoreTarget& t, const std::string& path, std::uint64_
 }
 
 }  // namespace
+
+int prot_of(std::uint32_t flags) {
+    int p = 0;
+    if (flags & image::MappingFlag::Read) p |= PROT_READ;
+    if (flags & image::MappingFlag::Write) p |= PROT_WRITE;
+    if (flags & image::MappingFlag::Exec) p |= PROT_EXEC;
+    return p;
+}
 
 bool collides_with_tls(const RestoreTarget& target,
                        const std::vector<image::MappingRecord>& mappings) {
@@ -146,7 +146,6 @@ LayoutResult rebuild_address_space(RestoreTarget& target, const image::ImageRead
 
         ++res.created;
         res.bytes_mapped += len;
-        (void)prot_of(m.flags);  // recorded protection is applied in Task 5
     }
 
     return res;
