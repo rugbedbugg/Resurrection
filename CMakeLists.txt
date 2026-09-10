@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(adaptive_restore
-    VERSION 0.4.0
+    VERSION 0.4.1
     DESCRIPTION "Adaptive region-aware process restoration for Linux"
     LANGUAGES C CXX)
 
@@ -78,6 +78,7 @@ add_library(adaptive_restore STATIC
     src/checkpoint/registers.cpp
     src/checkpoint/regions.cpp
     src/checkpoint/capture.cpp
+    src/checkpoint/unsupported_state.cpp
     src/policy/calibration.cpp
     src/policy/policy_engine.cpp
     ${AR_PROFILE_SOURCES}

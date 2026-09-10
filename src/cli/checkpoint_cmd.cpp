@@ -36,6 +36,7 @@ int open_stream(const std::string& path) {
 int cmd_checkpoint(std::span<const std::string_view> args) {
     std::string output = "checkpoint.arimg";
     bool verify = false;
+    bool allow_unsupported = false;
     checkpoint::EnvPolicy policy;
     std::vector<std::string> target_argv;
 
@@ -48,6 +49,8 @@ int cmd_checkpoint(std::span<const std::string_view> args) {
         }
         if (a == "--verify") {
             verify = true;
+        } else if (a == "--allow-unsupported-state") {
+            allow_unsupported = true;
         } else if (a == "--output" || a == "--env") {
             if (i + 1 >= args.size()) return fail(std::string(a) + " needs a value");
             const std::string value(args[++i]);
@@ -63,7 +66,7 @@ int cmd_checkpoint(std::span<const std::string_view> args) {
 
     if (target_argv.empty())
         return fail("no target given; use: arctl checkpoint [--verify] [--env K=V] "
-                    "--output <image> -- <command> [args...]");
+                    "--output <image> [--allow-unsupported-state] -- <command> [args...]");
 
     const std::string out_path = output + ".stdout";
     const std::string err_path = output + ".stderr";
@@ -80,6 +83,7 @@ int cmd_checkpoint(std::span<const std::string_view> args) {
         image::ImageWriter writer;
         checkpoint::CaptureOptions opts;
         opts.verify = verify;
+        opts.allow_unsupported_state = allow_unsupported;
         const auto res = checkpoint::capture(
             target, checkpoint::launch_digest(spawned.argv, spawned.envp), opts, writer);
 

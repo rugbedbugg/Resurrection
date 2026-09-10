@@ -85,6 +85,14 @@ add_dependencies(test_capture_mini arctl workload_mini)
 add_executable(helper_marker_target unit/helper_marker_target.c)
 target_include_directories(helper_marker_target PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
+add_executable(helper_stateful_target unit/helper_stateful_target.c)
+target_include_directories(helper_stateful_target PRIVATE ${CMAKE_SOURCE_DIR}/include)
+
+ar_add_test(unsupported_state unit/test_unsupported_state.cpp)
+target_compile_definitions(test_unsupported_state PRIVATE
+    STATEFUL_PATH="$<TARGET_FILE:helper_stateful_target>")
+add_dependencies(test_unsupported_state helper_stateful_target)
+
 ar_add_test(spawn unit/test_spawn.cpp)
 target_compile_definitions(test_spawn PRIVATE HELPER_PATH="$<TARGET_FILE:helper_marker_target>")
 add_dependencies(test_spawn helper_marker_target)

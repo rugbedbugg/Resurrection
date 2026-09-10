@@ -16,6 +16,7 @@
 #include "adaptive_restore/checkpoint/proc_mem.hpp"
 #include "adaptive_restore/checkpoint/regions.hpp"
 #include "adaptive_restore/checkpoint/registers.hpp"
+#include "adaptive_restore/checkpoint/unsupported_state.hpp"
 #include "adaptive_restore/common/crc32c.hpp"
 #include "adaptive_restore/common/error.hpp"
 #include "adaptive_restore/image/format.hpp"
@@ -104,6 +105,15 @@ CaptureResult capture(pid_t pid, const std::array<std::byte, 32>& launch_digest,
     if (opts.page_size == 0 || (opts.page_size & (opts.page_size - 1)) != 0)
         throw CheckpointError("capture: page_size must be a power of two");
     const std::uint64_t page_size = opts.page_size;
+
+    // Refuse before doing any work: the fd collector already rejects what it
+    // cannot represent, and everything else the image omits deserves the same
+    // treatment rather than silently diverging on restore.
+    if (!opts.allow_unsupported_state) {
+        const auto unsupported = find_unsupported_state(pid);
+        if (!unsupported.empty())
+            throw CheckpointError("capture: " + unsupported.describe());
+    }
 
     CaptureResult res;
     out.set_registers(capture_registers(pid));

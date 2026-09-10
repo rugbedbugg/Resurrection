@@ -12,6 +12,13 @@ namespace adaptive_restore::checkpoint {
 struct CaptureOptions {
     bool verify = false;
     std::uint64_t page_size = 4096;
+
+    // Capture a target holding state the image cannot represent (signal masks
+    // and handlers, extra threads, seccomp, a different cwd). Off by default:
+    // such a checkpoint restores into a subtly different process, and the
+    // divergence surfaces far from its cause. Set only when the caller
+    // understands what will be lost.
+    bool allow_unsupported_state = false;
 };
 
 struct CaptureResult {
