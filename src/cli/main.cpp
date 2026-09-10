@@ -27,7 +27,7 @@ int usage(std::ostream& os) {
        << "  checkpoint [--verify] [--env K=V] --output <image> -- <cmd> [args...]\n"
        << "  restore    --image <image> --policy eager|lazy [--verify] [--record-trace <p>]\n"
        << "  inspect    --image <image>\n"
-       << "  profile    show|reset --image <image>\n"
+       << "  profile    show|reset|export --image <image> --profile <db>\n"
        << "  benchmark  --suite <suite.yaml> --output <results-dir>\n"
        << "  visualize  --run <run-id>\n\n"
        << "common options: --region-size --prefetch-budget --cold-cache --seed\n"
@@ -69,8 +69,16 @@ int main(int argc, char** argv) {
         return no_restore_support();
 #endif
     }
-    if (cmd == "profile" || cmd == "benchmark" || cmd == "visualize")
-        return not_implemented(cmd);
+    if (cmd == "profile") {
+#ifdef AR_HAVE_SQLITE
+        return adaptive_restore::cli::cmd_profile(rest);
+#else
+        std::cerr << "arctl: 'profile' is unavailable: this build was configured without "
+                     "SQLite.\n";
+        return ENOSYS;
+#endif
+    }
+    if (cmd == "benchmark" || cmd == "visualize") return not_implemented(cmd);
 
     std::cerr << "arctl: unknown command '" << cmd << "'\n\n";
     return usage(std::cerr);

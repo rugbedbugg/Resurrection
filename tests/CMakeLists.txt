@@ -29,9 +29,6 @@ ar_add_test(policy_engine unit/test_policy_engine.cpp)
 if(SQLite3Opt_FOUND)
     ar_add_test(profile_store unit/test_profile_store.cpp)
     ar_add_test(region_profiler unit/test_region_profiler.cpp)
-    if(Compel_FOUND)
-        ar_add_test(prefetch_provider unit/test_prefetch_provider.cpp)
-    endif()
 endif()
 
 if(Compel_FOUND)
@@ -42,6 +39,7 @@ if(Compel_FOUND)
     ar_add_test(restore_failures unit/test_restore_failures.cpp)
     ar_add_test(uffd unit/test_uffd.cpp)
     ar_add_test(lazy_provider unit/test_lazy_provider.cpp)
+    ar_add_test(prefetch_provider unit/test_prefetch_provider.cpp)
 
     # Phase 3 parity: lazy must match eager, byte for byte, on the real workload.
     ar_add_test(restore_mini_lazy integration/test_restore_mini_lazy.cpp)

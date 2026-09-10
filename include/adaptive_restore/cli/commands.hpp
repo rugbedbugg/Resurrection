@@ -14,4 +14,9 @@ int cmd_inspect(std::span<const std::string_view> args);
 int cmd_restore(std::span<const std::string_view> args);
 #endif
 
+#ifdef AR_HAVE_SQLITE
+// Only built when SQLite is available; see cmake/FindSQLite3Opt.cmake.
+int cmd_profile(std::span<const std::string_view> args);
+#endif
+
 }  // namespace adaptive_restore::cli

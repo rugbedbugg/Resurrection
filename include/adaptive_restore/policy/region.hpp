@@ -39,6 +39,7 @@ struct RegionOutcome {
 };
 
 struct RegionDecision {
+    std::uint32_t region_id = 0;
     paging::RestoreAction action = paging::RestoreAction::Eager;
     float confidence = 0.0f;
     float predicted_cost = 0.0f;   // seconds, the winning arm's cost

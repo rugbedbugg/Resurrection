@@ -8,7 +8,8 @@
 
 #include "adaptive_restore/restore/address_space.hpp"
 #include "adaptive_restore/restore/page_writer.hpp"
-#include "adaptive_restore/paging/lazy_provider.hpp"
+#include "adaptive_restore/paging/prefetch_provider.hpp"
+#include "adaptive_restore/policy/region.hpp"
 #include "adaptive_restore/restore/resume.hpp"
 #include "adaptive_restore/restore/uffd.hpp"
 
@@ -19,15 +20,18 @@ class ImageReader;
 namespace adaptive_restore::restore {
 
 enum class RestorePolicy {
-    Eager,  // every page written before the target resumes (§9.3)
-    Lazy,   // anonymous regions registered with userfaultfd and served on demand (§9.4)
+    Eager,     // every page written before the target resumes (§9.3)
+    Lazy,      // anonymous regions registered and served on demand (§9.4)
+    Prefetch,  // load the recorded working set, fault for the rest (§9.5)
+    Cost,      // choose per region from the cost model (§12)
 };
 
 struct RestoreOptions {
     bool verify = false;
     RestorePolicy policy = RestorePolicy::Eager;
     std::string trace_path;    // when set, the demand-fault trace is written here
-    std::string profile_path;  // when set, a lazy restore teaches this profile
+    std::string profile_path;  // when set, a restore reads and teaches this profile
+    bool cold_cache = true;    // calibration to use; see the calibration report
     // Scratch area for compel. Kept far from any realistic process layout so it
     // cannot collide with an image; see docs/phase2-spike-report.md.
     std::uint64_t reserve_addr = 0x700000000000ULL;
@@ -42,6 +46,8 @@ struct RestoreSummary {
     PopulateResult pages;
     ResumeResult resume;
     paging::LazyStats lazy;               // zero under RestorePolicy::Eager
+    paging::PrefetchStats prefetch;       // zero unless a policy prefetched
+    std::vector<policy::RegionDecision> decisions;  // populated under Cost
     std::vector<paging::RestoreAction> actions;  // what each region was prepared with
     std::uint64_t regions_eager = 0;
     std::uint64_t regions_lazy = 0;
@@ -57,7 +63,7 @@ struct RestoreSummary {
 // running with pages still owed to it.
 struct LazySession {
     std::unique_ptr<Userfault> uffd;
-    std::unique_ptr<paging::LazyProvider> provider;
+    std::unique_ptr<paging::PrefetchProvider> provider;
 
     // Serve demand faults until the target exits. Kills the target rather than
     // returning if a fault cannot be resolved.

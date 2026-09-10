@@ -27,6 +27,7 @@ RegionDecision CostModelPolicyEngine::choose(const RegionFeatures& f, const Syst
     const double expected_touched = fraction * f.pages;
 
     RegionDecision d;
+    d.region_id = f.region_id;
     d.cost_eager = static_cast<float>(k.cost_eager(f.bytes()));
 
     // Zero pages never cost a read; they are supplied by UFFDIO_ZEROPAGE.

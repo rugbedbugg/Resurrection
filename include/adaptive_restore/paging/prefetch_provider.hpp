@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -49,6 +50,7 @@ public:
     const LazyStats& lazy_stats() const { return lazy_.stats(); }
     const std::vector<FaultRecord>& trace() const { return lazy_.trace(); }
     void record_trace(bool on) { lazy_.record_trace(on); }
+    void write_trace_to(const std::string& path) const { lazy_.write_trace(path); }
 
     // Pages loaded up front that no fault ever asked for. Only meaningful once
     // the target has exited.

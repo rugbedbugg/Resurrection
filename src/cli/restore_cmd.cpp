@@ -1,5 +1,6 @@
 #include <sys/wait.h>
 
+#include <cmath>
 #include <cstdint>
 #include <iostream>
 #include <string>
@@ -63,10 +64,24 @@ int cmd_restore(std::span<const std::string_view> args) {
         opts.policy = restore::RestorePolicy::Eager;
     } else if (policy == "lazy") {
         opts.policy = restore::RestorePolicy::Lazy;
+    } else if (policy == "prefetch") {
+        opts.policy = restore::RestorePolicy::Prefetch;
+    } else if (policy == "cost") {
+        opts.policy = restore::RestorePolicy::Cost;
     } else {
         return fail("policy '" + policy +
-                    "' is not implemented yet; available policies are eager and lazy");
+                    "' is not recognised; available policies are eager, lazy, prefetch and cost");
     }
+#ifndef AR_HAVE_SQLITE
+    if (opts.policy == restore::RestorePolicy::Prefetch ||
+        opts.policy == restore::RestorePolicy::Cost)
+        return fail("policy '" + policy +
+                    "' needs the profile store; this build was configured without SQLite");
+#endif
+    if ((opts.policy == restore::RestorePolicy::Prefetch ||
+         opts.policy == restore::RestorePolicy::Cost) &&
+        opts.profile_path.empty())
+        return fail("policy '" + policy + "' needs --profile <db> to read region history");
 
     try {
         const auto image = image::ImageReader::open(image_path);
@@ -81,7 +96,7 @@ int cmd_restore(std::span<const std::string_view> args) {
                   << s.pages.writev_calls << " writes\n"
                   << "  fds        " << s.resume.fds_restored << " restored\n"
                   << "  regions    " << s.regions_eager << " eager, " << s.regions_lazy
-                  << " lazy\n"
+                  << " deferred\n"
                   << "  verify     "
                   << (!opts.verify ? "skipped"
                       : opts.policy == restore::RestorePolicy::Eager
@@ -90,33 +105,88 @@ int cmd_restore(std::span<const std::string_view> args) {
                   << '\n'
                   << "  resume     " << ms(s.resume_latency_ns) << " to first instruction\n";
 
-        // Under lazy the target is running with pages still owed to it, so
-        // arctl becomes its page server for the rest of its life.
+        // §12 sells this controller on being deterministic and explainable, so
+        // the decisions travel with their costs. A breakdown nobody can read
+        // fails that claim on its own terms.
+        if (!s.decisions.empty()) {
+            std::size_t n_eager = 0, n_pref = 0, n_lazy = 0;
+            for (const auto& d : s.decisions) {
+                if (d.action == paging::RestoreAction::Eager) ++n_eager;
+                else if (d.action == paging::RestoreAction::StaticPrefetch) ++n_pref;
+                else ++n_lazy;
+            }
+            std::cout << "  decisions  " << n_eager << " eager, " << n_pref << " prefetch, "
+                      << n_lazy << " lazy  (" << (opts.cold_cache ? "cold" : "warm")
+                      << "-cache calibration)\n";
+            std::cout << "             region     chose   cost_eager  cost_prefetch"
+                         "   cost_lazy   conf\n";
+            std::size_t shown = 0;
+            for (const auto& d : s.decisions) {
+                if (shown++ >= 6) break;
+                const char* name = d.action == paging::RestoreAction::Eager      ? "eager"
+                                   : d.action == paging::RestoreAction::StaticPrefetch
+                                       ? "prefetch"
+                                       : "lazy";
+                // An infinite prefetch cost means "nothing recorded to load",
+                // which is a real state and prints as a dash, not a number.
+                char pf[24];
+                if (std::isinf(d.cost_prefetch))
+                    std::snprintf(pf, sizeof pf, "%13s", "-");
+                else
+                    std::snprintf(pf, sizeof pf, "%11.1fus", d.cost_prefetch * 1e6);
+
+                char line[160];
+                std::snprintf(line, sizeof line, "             %6u  %8s  %9.1fus %s  %8.1fus  %.2f\n",
+                              d.region_id, name, d.cost_eager * 1e6, pf, d.cost_lazy * 1e6,
+                              static_cast<double>(d.confidence));
+                std::cout << line;
+            }
+            if (s.decisions.size() > 6)
+                std::cout << "             ... " << (s.decisions.size() - 6) << " more\n";
+        }
+
+        // Under a deferring policy the target is running with pages still owed
+        // to it, so arctl becomes its page server for the rest of its life.
         int st = 0;
         bool reaped = false;
         if (s.session) {
-            std::cout << "  serving    " << s.lazy.pages_registered << " pages across "
-                      << s.lazy.regions_registered << " registered regions\n";
+            const auto& ls = s.session->provider->lazy_stats();
+            const auto& ps = s.session->provider->stats();
+            std::cout << "  deferred   " << ls.pages_registered << " pages across "
+                      << ls.regions_registered << " registered regions\n";
+            if (ps.pages_prefetched > 0)
+                std::cout << "  prefetched " << ps.pages_prefetched << " pages ("
+                          << ps.bytes_prefetched << " bytes) from history across "
+                          << ps.regions_prefetched << " regions\n";
+            if (ps.regions_without_history > 0)
+                std::cout << "  no history " << ps.regions_without_history
+                          << " regions degraded to pure lazy\n";
+
             const auto served = s.session->serve(s.pid);
-            const auto& ls = s.session->provider->stats();
             std::cout << "  faults     " << served.faults_served << " served ("
                       << ls.copy_faults << " copy, " << ls.zero_faults << " zero), "
                       << ls.bytes_supplied << " bytes\n";
-            if (ls.pages_registered > 0)
-                std::cout << "  untouched  " << (ls.pages_registered - served.faults_served)
-                          << " of " << ls.pages_registered
-                          << " registered pages were never demanded\n";
+            if (ls.pages_registered > 0) {
+                // Neither loaded up front nor demanded: genuinely untouched.
+                // Subtracting only the faults would count prefetched pages as
+                // untouched, which is exactly backwards.
+                const auto accounted = served.faults_served + ps.pages_prefetched;
+                const auto untouched =
+                    ls.pages_registered > accounted ? ls.pages_registered - accounted : 0;
+                std::cout << "  untouched  " << untouched << " of " << ls.pages_registered
+                          << " deferred pages were neither loaded nor demanded\n";
+            }
             if (ls.faults_served > 0)
                 std::cout << "  latency    " << (ls.service_ns_total / ls.faults_served)
                           << " ns mean per fault, " << ls.service_ns_total << " ns total\n";
             if (!opts.trace_path.empty()) {
-                s.session->provider->write_trace(opts.trace_path);
+                s.session->provider->write_trace_to(opts.trace_path);
                 std::cout << "  trace      " << s.session->provider->trace().size()
                           << " faults written to " << opts.trace_path << '\n';
             }
 #ifdef AR_HAVE_SQLITE
-            // A lazy restore is the only kind that can teach: every first touch
-            // faults, so its trace is the touched set.
+            // Only a restore that deferred pages can teach: a page that was
+            // written up front never faults, so nothing observes it.
             if (!opts.profile_path.empty()) {
                 const auto observed = profile::observe_regions(
                     image, s.session->provider->trace(), s.actions);

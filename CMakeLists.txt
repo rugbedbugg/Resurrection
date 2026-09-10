@@ -47,11 +47,9 @@ if(NOT AR_FORCE_NO_SQLITE)
 endif()
 if(SQLite3Opt_FOUND)
     message(STATUS "sqlite3 ${SQLITE3_VERSION} found: profile store enabled")
+    # SQLite-gated: only these actually touch the database.
     list(APPEND AR_PROFILE_SOURCES src/profile/profile_store.cpp
                                    src/profile/region_profiler.cpp)
-    if(Compel_FOUND)
-        list(APPEND AR_PROFILE_SOURCES src/paging/prefetch_provider.cpp)
-    endif()
 else()
     message(STATUS "sqlite3 not found: building without the profile store "
                    "(prefetch and cost policies unavailable)")
@@ -59,7 +57,7 @@ endif()
 
 if(Compel_FOUND)
     message(STATUS "compel ${COMPEL_VERSION} found: restore support enabled")
-    set(AR_RESTORE_SOURCES src/restore/target.cpp src/restore/address_space.cpp src/restore/page_writer.cpp src/restore/resume.cpp src/restore/restore.cpp src/paging/eager_provider.cpp src/paging/page_locator.cpp src/paging/lazy_provider.cpp src/restore/uffd.cpp)
+    set(AR_RESTORE_SOURCES src/restore/target.cpp src/restore/address_space.cpp src/restore/page_writer.cpp src/restore/resume.cpp src/restore/restore.cpp src/paging/eager_provider.cpp src/paging/page_locator.cpp src/paging/lazy_provider.cpp src/paging/prefetch_provider.cpp src/restore/uffd.cpp)
 else()
     message(STATUS "compel not found: building without restore support "
                    "(checkpoint and inspect are unaffected)")
@@ -102,6 +100,9 @@ add_executable(arctl
     src/cli/inspect_cmd.cpp
 )
 target_link_libraries(arctl PRIVATE adaptive_restore)
+if(SQLite3Opt_FOUND)
+    target_sources(arctl PRIVATE src/cli/profile_cmd.cpp)
+endif()
 if(Compel_FOUND)
     target_sources(arctl PRIVATE src/cli/restore_cmd.cpp)
     target_link_libraries(arctl PRIVATE Compel::Compel)

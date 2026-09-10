@@ -65,7 +65,7 @@ int main() {
     const long registered = field_before(lazy_log, "pages across");
     const long served = field_before(lazy_log, "served (");
     const long undemanded = field_before(lazy_log, "of " + std::to_string(registered) +
-                                                       " registered pages");
+                                                       " deferred pages");
     assert(registered > 100 && "the sparse workload should register a large region");
     assert(served > 0 && "a resuming process must fault on something");
     assert(served * 4 < registered &&

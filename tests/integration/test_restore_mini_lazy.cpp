@@ -69,9 +69,9 @@ int main() {
     assert(lazy_log.find("target     exited 0") != std::string::npos);
 
     // --- lazy must actually defer work, not quietly behave like eager -------
-    assert(lazy_log.find(" lazy") != std::string::npos);
+    assert(lazy_log.find(" deferred") != std::string::npos);
     assert(lazy_log.find("registered regions") != std::string::npos);
-    assert(lazy_log.find("never demanded") != std::string::npos &&
+    assert(lazy_log.find("neither loaded nor demanded") != std::string::npos &&
            "a workload that touches only part of its memory must leave pages undemanded");
 
     // --- repeated restore from the same image (§25.2) -----------------------

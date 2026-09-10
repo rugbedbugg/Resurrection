@@ -18,14 +18,18 @@ PrefetchProvider::PrefetchProvider(const image::ImageReader& image,
 }
 
 void PrefetchProvider::prepare_region(std::uint32_t region_id, RestoreAction action) {
-    if (action != RestoreAction::StaticPrefetch)
+    if (action != RestoreAction::StaticPrefetch && action != RestoreAction::Lazy)
         throw CheckpointError("PrefetchProvider: asked to prepare region " +
-                              std::to_string(region_id) + " with a non-prefetch action");
+                              std::to_string(region_id) + " with an unsupported action");
 
     // Register first, then populate. Registering a range whose pages are
     // already present would leave those pages silently un-handled, and any
     // later fault on them would resolve as a zero page.
     lazy_.prepare_region(region_id, RestoreAction::Lazy);
+
+    // A Lazy region is a prefetch region with nothing predicted, which is the
+    // same code path a region with no history already takes.
+    if (action == RestoreAction::Lazy) return;
 
     const auto it = history_.find(region_id);
     if (it == history_.end() || it->second.touched_bitmap.empty()) {
