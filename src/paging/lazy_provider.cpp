@@ -5,6 +5,7 @@
 #include <signal.h>
 #include <sys/ioctl.h>
 #include <sys/wait.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 
 #include <cerrno>
@@ -131,7 +132,13 @@ ServeResult serve_faults(restore::Userfault& uffd, PageProvider& provider,
                          const PageLocator& locator, pid_t target_pid) {
     ServeResult out;
 
-    const auto target_gone = [target_pid, &out]() {
+    // Poll the target's pidfd alongside the uffd so its exit is noticed the
+    // moment it happens. Waiting on a poll timeout instead adds that timeout to
+    // every run, which is pure measurement artifact: it dominated the numbers
+    // before this was fixed.
+    const long pidfd = ::syscall(SYS_pidfd_open, target_pid, 0);
+
+    const auto reap = [target_pid, &out]() {
         int st = 0;
         const pid_t w = ::waitpid(target_pid, &st, WNOHANG);
         if (w == target_pid) {
@@ -142,36 +149,47 @@ ServeResult serve_faults(restore::Userfault& uffd, PageProvider& provider,
     };
 
     for (;;) {
-        ::pollfd pfd{uffd.fd(), POLLIN, 0};
-        const int pr = ::poll(&pfd, 1, 100);
+        ::pollfd pfds[2];
+        pfds[0] = {uffd.fd(), POLLIN, 0};
+        pfds[1] = {static_cast<int>(pidfd), POLLIN, 0};
+        const int nfds = pidfd >= 0 ? 2 : 1;
+
+        const int pr = ::poll(pfds, static_cast<nfds_t>(nfds), 1000);
         if (pr < 0) {
             if (errno == EINTR) continue;
             ::kill(target_pid, SIGKILL);
+            if (pidfd >= 0) ::close(static_cast<int>(pidfd));
             throw CheckpointError(std::string("restore: poll on the userfaultfd: ") +
                                   std::strerror(errno));
         }
-        if (pr == 0) {
-            // Nothing pending. The target may simply be busy, or gone.
-            if (target_gone()) {
+
+        // Faults first: the target may have queued one and then exited, and
+        // dropping it would be indistinguishable from never serving it.
+        if (pr == 0 || !(pfds[0].revents & (POLLIN | POLLERR | POLLHUP))) {
+            if ((nfds == 2 && (pfds[1].revents & POLLIN)) || reap()) {
+                reap();
                 out.target_exited = true;
-                return out;
+                break;
             }
             continue;
         }
-        if (pfd.revents & POLLHUP) {
+
+        if (pfds[0].revents & POLLHUP) {
+            reap();
             out.target_exited = true;
-            return out;
+            break;
         }
-        if ((pfd.revents & POLLERR) && !(pfd.revents & POLLIN)) {
+        if ((pfds[0].revents & POLLERR) && !(pfds[0].revents & POLLIN)) {
             // Not "the target went away": the kernel reports EPOLLERR for a
-            // userfaultfd that is uninitialised or, crucially, not O_NONBLOCK.
-            // Treating it as a clean exit is how a mis-created uffd turns into
-            // a target that silently reads zero pages.
-            if (target_gone()) {
+            // userfaultfd that is uninitialised or not O_NONBLOCK. Treating it
+            // as a clean exit is how a mis-created uffd turns into a target
+            // that silently reads zero pages.
+            if (reap()) {
                 out.target_exited = true;
-                return out;
+                break;
             }
             ::kill(target_pid, SIGKILL);
+            if (pidfd >= 0) ::close(static_cast<int>(pidfd));
             throw CheckpointError(
                 "restore: userfaultfd poll reported POLLERR while the target is alive; "
                 "the fd is uninitialised or was not created with O_NONBLOCK");
@@ -180,20 +198,21 @@ ServeResult serve_faults(restore::Userfault& uffd, PageProvider& provider,
         ::uffd_msg msg{};
         const ssize_t n = ::read(uffd.fd(), &msg, sizeof msg);
         if (n == 0) {
+            reap();
             out.target_exited = true;
-            return out;
+            break;
         }
         if (n != sizeof msg) {
             if (errno == EAGAIN || errno == EINTR) continue;
             ::kill(target_pid, SIGKILL);
+            if (pidfd >= 0) ::close(static_cast<int>(pidfd));
             throw CheckpointError(std::string("restore: short read on the userfaultfd: ") +
                                   std::strerror(errno));
         }
 
         switch (msg.event) {
         case UFFD_EVENT_PAGEFAULT: {
-            const std::uint64_t addr =
-                msg.arg.pagefault.address & ~(locator.page_size() - 1);
+            const std::uint64_t addr = msg.arg.pagefault.address & ~(locator.page_size() - 1);
             const std::size_t idx = locator.find(addr);
             PageRequest req;
             req.virtual_address = addr;
@@ -207,6 +226,7 @@ ServeResult serve_faults(restore::Userfault& uffd, PageProvider& provider,
                 // A fault we cannot resolve leaves the target blocked forever,
                 // so it must die rather than wedge.
                 ::kill(target_pid, SIGKILL);
+                if (pidfd >= 0) ::close(static_cast<int>(pidfd));
                 throw;
             }
             ++out.faults_served;
@@ -214,12 +234,14 @@ ServeResult serve_faults(restore::Userfault& uffd, PageProvider& provider,
         }
         case UFFD_EVENT_UNMAP:
         case UFFD_EVENT_REMOVE:
-            // The target dropped part of a registered range; nothing to serve.
             break;
         default:
             break;
         }
     }
+
+    if (pidfd >= 0) ::close(static_cast<int>(pidfd));
+    return out;
 }
 
 }  // namespace adaptive_restore::paging

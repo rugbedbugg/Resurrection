@@ -57,8 +57,14 @@ public:
     std::uint64_t unused_prefetched() const;
 
 private:
+    // Prefetching resolves contiguous runs in one ioctl, so the uffd is needed
+    // directly rather than through LazyProvider's per-page path.
+    std::uint64_t copy_run(std::uint64_t vaddr, const std::byte* src, std::uint64_t len);
+    std::uint64_t zero_run(std::uint64_t vaddr, std::uint64_t len);
+
     const image::ImageReader& image_;
     restore::RestoreTarget& target_;
+    restore::Userfault& uffd_;
     LazyProvider lazy_;  // owns registration and fault resolution
     std::unordered_map<std::uint32_t, profile::RegionHistory> history_;
     std::vector<std::uint64_t> prefetched_vaddrs_;

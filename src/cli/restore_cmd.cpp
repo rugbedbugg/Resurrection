@@ -40,6 +40,10 @@ int cmd_restore(std::span<const std::string_view> args) {
         const std::string_view a = args[i];
         if (a == "--verify") {
             opts.verify = true;
+        } else if (a == "--cold-cache") {
+            opts.cold_cache = true;
+        } else if (a == "--warm-cache") {
+            opts.cold_cache = false;
         } else if (a == "--image" || a == "--policy" || a == "--record-trace" ||
                    a == "--profile") {
             if (i + 1 >= args.size()) return fail(std::string(a) + " needs a value");
@@ -59,7 +63,8 @@ int cmd_restore(std::span<const std::string_view> args) {
 
     if (image_path.empty())
         return fail("usage: arctl restore --image <image> --policy eager|lazy "
-                    "[--verify] [--record-trace <path>]");
+                    "[--verify] [--record-trace <path>] [--profile <db>] "
+                    "[--cold-cache|--warm-cache]");
     if (policy == "eager") {
         opts.policy = restore::RestorePolicy::Eager;
     } else if (policy == "lazy") {
