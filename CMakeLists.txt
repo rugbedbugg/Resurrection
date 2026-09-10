@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(adaptive_restore
-    VERSION 0.0.1
+    VERSION 0.1.0
     DESCRIPTION "Adaptive region-aware process restoration for Linux"
     LANGUAGES C CXX)
 
@@ -13,6 +13,15 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# version.hpp carries the version for C++ consumers; keep it honest.
+file(READ ${CMAKE_CURRENT_SOURCE_DIR}/include/adaptive_restore/common/version.hpp _ver_hpp)
+string(REGEX MATCH "kProjectVersion = \"([0-9]+\\.[0-9]+\\.[0-9]+)\"" _m "${_ver_hpp}")
+if(NOT CMAKE_MATCH_1 STREQUAL PROJECT_VERSION)
+    message(FATAL_ERROR
+        "version mismatch: CMakeLists.txt says ${PROJECT_VERSION}, "
+        "version.hpp says ${CMAKE_MATCH_1}")
+endif()
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
     message(FATAL_ERROR "adaptive-restore targets Linux only (needs ptrace, userfaultfd, process_vm_readv)")

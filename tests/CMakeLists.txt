@@ -45,4 +45,5 @@ set_tests_properties(arctl_usage PROPERTIES WILL_FAIL TRUE)
 
 # arctl --version prints the version string.
 add_test(NAME arctl_version COMMAND arctl --version)
-set_tests_properties(arctl_version PROPERTIES PASS_REGULAR_EXPRESSION "^0\\.0\\.1")
+string(REPLACE "." "\\." _ver_re "${PROJECT_VERSION}")
+set_tests_properties(arctl_version PROPERTIES PASS_REGULAR_EXPRESSION "^${_ver_re}")
