@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "adaptive_restore/image/format.hpp"
 #include "adaptive_restore/paging/page_locator.hpp"
 #include "adaptive_restore/paging/page_provider.hpp"
 #include "adaptive_restore/restore/uffd.hpp"
@@ -64,6 +65,7 @@ private:
     const image::ImageReader& image_;
     restore::Userfault& uffd_;
     PageLocator locator_;
+    std::vector<image::RegionRecord> regions_;  // cached; see prepare_region
     LazyStats stats_;
     std::vector<FaultRecord> trace_;
     bool recording_ = false;

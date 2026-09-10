@@ -19,12 +19,18 @@
 
 #include "adaptive_restore/marker.h"
 
+/* Sized so the transfer the controller reasons about dominates the fixed cost
+ * of a restore. Fixed overhead (fork, compel seize, rebuilding the address
+ * space, fd restore, control transfer) measures ~8 ms; at 1505 MiB/s an eager
+ * restore of 64 MiB spends ~42 ms moving bytes. At the original 4 MiB the
+ * policies differed by ~2 ms inside +/-3 ms of noise, which is a badly sized
+ * experiment rather than a null result. */
 #define PAGE   4096u
-#define REGION (1024u * 1024u)          /* 1 MiB each: 4 x 256 KiB regions */
-#define PAGES  (REGION / PAGE)          /* 256 pages each */
+#define REGION (16u * 1024u * 1024u)    /* 16 MiB each, 64 MiB total */
+#define PAGES  (REGION / PAGE)          /* 4096 pages each */
 
-#define SPARSE_TOUCH 8u                 /* ~3% of the region */
-#define HOT_TOUCH    64u                /* 25%, the same pages every time */
+#define SPARSE_TOUCH 128u               /* ~3% of the region */
+#define HOT_TOUCH    1024u              /* 25%, the same pages every time */
 
 static unsigned long lcg(unsigned long *s) {
     return (*s = *s * 6364136223846793005UL + 1442695040888963407UL);
@@ -59,7 +65,7 @@ int main(void) {
     /* HOT: the same quarter of the region on every restore. Deterministic on
      * purpose, so a working set recorded once is still correct next time. */
     for (unsigned i = 0; i < HOT_TOUCH; i++)
-        digest += hot[(size_t)(i * 4) * PAGE];
+        digest += hot[(size_t)(i * 4) * PAGE];   /* every 4th page: a fixed quarter */
 
     /* COLD: deliberately untouched. Eager pays for all 256 pages of it. */
     (void)cold;

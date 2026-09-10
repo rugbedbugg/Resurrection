@@ -18,7 +18,13 @@ namespace adaptive_restore::paging {
 PrefetchProvider::PrefetchProvider(const image::ImageReader& image,
                                    restore::RestoreTarget& target, restore::Userfault& uffd,
                                    const std::vector<profile::RegionHistory>& history)
-    : image_(image), target_(target), uffd_(uffd), lazy_(image, uffd) {
+    : image_(image),
+      target_(target),
+      uffd_(uffd),
+      regions_(image.regions()),
+      pages_(image.page_index()),
+      page_size_(image.header().page_size),
+      lazy_(image, uffd) {
     for (const auto& h : history) history_.emplace(h.region_id, h);
 }
 
@@ -43,10 +49,9 @@ void PrefetchProvider::prepare_region(std::uint32_t region_id, RestoreAction act
         return;
     }
 
-    const auto regions = image_.regions();
-    const auto& r = regions[region_id];
-    const auto& pages = image_.page_index();
-    const std::uint64_t page_size = image_.header().page_size;
+    const auto& r = regions_[region_id];
+    const auto& pages = pages_;
+    const std::uint64_t page_size = page_size_;
     const std::uint32_t n = r.page_index_hi - r.page_index_lo;
 
     // Coalesce runs contiguous in both the target and the image store, exactly

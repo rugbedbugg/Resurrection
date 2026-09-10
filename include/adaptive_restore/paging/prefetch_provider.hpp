@@ -1,5 +1,8 @@
 #pragma once
 #include <cstdint>
+#include <vector>
+
+#include "adaptive_restore/image/format.hpp"
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -65,6 +68,15 @@ private:
     const image::ImageReader& image_;
     restore::RestoreTarget& target_;
     restore::Userfault& uffd_;
+
+    // Cached once. ImageReader parses each section on demand, so reading them
+    // per region turns a linear restore quadratic: 283 regions x 17086 page
+    // records measured 212 ms of pure parsing. This is the second time this
+    // trap has been hit (EagerProvider had it too), hence the loud comment.
+    std::vector<image::RegionRecord> regions_;
+    std::vector<image::PageIndexRecord> pages_;
+    std::uint64_t page_size_ = 4096;
+
     LazyProvider lazy_;  // owns registration and fault resolution
     std::unordered_map<std::uint32_t, profile::RegionHistory> history_;
     std::vector<std::uint64_t> prefetched_vaddrs_;

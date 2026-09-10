@@ -93,6 +93,34 @@ static double register_cost(int regions) {
     return dt / regions * 1e6;   /* us per region */
 }
 
+/* UFFDIO_COPY cost as a function of run length. A working set that touches
+ * every 4th page cannot be coalesced, so it pays one ioctl per page. If the
+ * per-ioctl overhead is large, "bandwidth" is the wrong model entirely. */
+static double copy_cost_per_page(unsigned run_pages) {
+    const size_t total = 4u << 20;
+    const size_t run = (size_t)run_pages * (size_t)PG;
+    int u = make_uffd(); if (u < 0) return -1;
+    unsigned char *dst = mmap(NULL, total, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+    unsigned char *src = malloc(total); memset(src, 0x5A, total);
+    struct uffdio_register reg; memset(&reg, 0, sizeof reg);
+    reg.range.start = (unsigned long)dst; reg.range.len = total;
+    reg.mode = UFFDIO_REGISTER_MODE_MISSING;
+    if (ioctl(u, UFFDIO_REGISTER, &reg) < 0) return -1;
+
+    const unsigned n = (unsigned)(total / run);
+    const double t0 = now_s();
+    for (unsigned i = 0; i < n; i++) {
+        struct uffdio_copy c; memset(&c, 0, sizeof c);
+        c.dst = (unsigned long)(dst + (size_t)i * run);
+        c.src = (unsigned long)(src + (size_t)i * run);
+        c.len = run;
+        if (ioctl(u, UFFDIO_COPY, &c) < 0) return -1;
+    }
+    const double dt = now_s() - t0;
+    munmap(dst, total); free(src); close(u);
+    return dt / (double)(n * run_pages) * 1e6;   /* us per page */
+}
+
 int main(void) {
     setbuf(stdout, NULL);
     PG = sysconf(_SC_PAGESIZE);
@@ -113,5 +141,13 @@ int main(void) {
 
     for (int i = 0; i < REPS; i++) v[i] = register_cost(64);
     printf("\n  UFFDIO_REGISTER               %8.2f us per 256 KiB region\n", median(v, REPS));
+
+    printf("\n  UFFDIO_COPY cost by run length (a fragmented working set cannot coalesce):\n");
+    for (unsigned rp = 1; rp <= 256; rp *= 4) {
+        for (int i = 0; i < REPS; i++) v[i] = copy_cost_per_page(rp);
+        const double per_page = median(v, REPS);
+        printf("    %4u page run   %7.2f us/page   -> %7.0f MiB/s\n", rp, per_page,
+               (double)PG / (per_page * 1e-6) / MiB);
+    }
     return 0;
 }
