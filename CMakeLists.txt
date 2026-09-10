@@ -63,6 +63,7 @@ add_library(adaptive_restore STATIC
     src/checkpoint/registers.cpp
     src/checkpoint/regions.cpp
     src/checkpoint/capture.cpp
+    src/policy/calibration.cpp
     ${AR_RESTORE_SOURCES}
 )
 target_include_directories(adaptive_restore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)

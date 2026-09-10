@@ -23,6 +23,7 @@ ar_add_test(fds unit/test_fds.cpp)
 ar_add_test(regions unit/test_regions.cpp)
 ar_add_test(registers unit/test_registers.cpp)
 ar_add_test(capture unit/test_capture.cpp)
+ar_add_test(calibration unit/test_calibration.cpp)
 
 if(Compel_FOUND)
     ar_add_test(restore_target unit/test_restore_target.cpp)
