@@ -72,6 +72,37 @@ UnsupportedState find_unsupported_state(pid_t pid) {
             out.reasons.push_back("no_new_privs is set");
     }
 
+    // umask is inherited from arctl, so a target that changed it would create
+    // files with different permissions after restore.
+    {
+        std::ifstream st2(status);
+        std::string l;
+        std::string target_umask, our_umask;
+        while (std::getline(st2, l))
+            if (l.rfind("Umask:", 0) == 0) target_umask = l.substr(6);
+        std::ifstream st3("/proc/self/status");
+        while (std::getline(st3, l))
+            if (l.rfind("Umask:", 0) == 0) our_umask = l.substr(6);
+        if (!target_umask.empty() && target_umask != our_umask)
+            out.reasons.push_back("a umask (" + target_umask + ") different from arctl's (" +
+                                  our_umask + ")");
+    }
+
+    // Resource limits are inherited too. Compared rather than checked against
+    // defaults, since "default" depends on how arctl itself was launched.
+    {
+        const auto read_limits = [](const std::string& p) {
+            std::ifstream f2(p);
+            std::ostringstream ss;
+            ss << f2.rdbuf();
+            return ss.str();
+        };
+        const std::string theirs = read_limits("/proc/" + std::to_string(pid) + "/limits");
+        const std::string ours = read_limits("/proc/self/limits");
+        if (!theirs.empty() && !ours.empty() && theirs != ours)
+            out.reasons.push_back("resource limits differing from arctl's");
+    }
+
     // A restored process inherits arctl's cwd, so a target that moved has
     // relative paths that would resolve differently.
     const std::string target_cwd = read_link("/proc/" + std::to_string(pid) + "/cwd");

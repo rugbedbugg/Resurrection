@@ -1,0 +1,16 @@
+# Tier 1 benchmark suite (design-draft-v2 §21).
+#
+# image_dir must be real storage: on tmpfs the image is read from RAM and
+# posix_fadvise cannot evict it, so every cold-cache figure would be fiction.
+# arctl refuses a tmpfs image_dir rather than producing numbers that look fine.
+image_dir = /home/rugbedbugg/.cache/arcalib
+
+policies = eager, lazy, prefetch, cost
+caches = warm
+reps = 9
+teach_reps = 2
+
+run build/workloads/workload_sparse_random
+run build/workloads/workload_dense_scan
+run build/workloads/workload_stable_hot_set
+run build/workloads/workload_mixed_regions

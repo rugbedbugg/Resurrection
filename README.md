@@ -22,8 +22,10 @@ On a workload with regions of genuinely different access behaviour, `--policy
 cost` beats every fixed policy by a median of ~16% and captures ~100% of the
 gain an oracle with perfect knowledge could achieve. Where a fixed policy is
 already optimal it matches that policy rather than losing to it, and when its
-recorded history is wrong it degrades in latency, never in correctness. Numbers
-and method: `docs/phase4-calibration-report.md`.
+recorded history is wrong it degrades in latency, never in correctness. Across all four Tier 1 benchmark workloads it is best on three and tied on the
+fourth, while every fixed policy is badly wrong on at least one (eager 89% worse
+on a sparse workload, lazy 238% worse on a dense one). Numbers and method:
+`docs/phase4-calibration-report.md`.
 
 Restore needs `criu`/`compel` at build time; checkpoint and inspect do not, and
 a build without compel is supported (it simply has no `restore`).
@@ -77,6 +79,7 @@ arctl restore --image run.arimg --policy eager --verify
 arctl restore --image run.arimg --policy lazy --record-trace faults.tsv --profile p.db
 arctl restore --image run.arimg --policy cost --profile p.db
 arctl profile show --image run.arimg --profile p.db
+arctl benchmark --suite experiments/bench/tier1.suite --output experiments/raw
 ```
 
 A restore under a deferring policy teaches the profile; later restores of the

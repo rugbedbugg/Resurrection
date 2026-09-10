@@ -28,7 +28,7 @@ int usage(std::ostream& os) {
        << "  restore    --image <image> --policy eager|lazy [--verify] [--record-trace <p>]\n"
        << "  inspect    --image <image>\n"
        << "  profile    show|reset|export --image <image> --profile <db>\n"
-       << "  benchmark  --suite <suite.yaml> --output <results-dir>\n"
+       << "  benchmark  --suite <suite> --output <results-dir>\n"
        << "  visualize  --run <run-id>\n\n"
        << "common options: --region-size --prefetch-budget --cold-cache --seed\n"
        << "                --disable-learning --record-trace\n";
@@ -78,7 +78,8 @@ int main(int argc, char** argv) {
         return ENOSYS;
 #endif
     }
-    if (cmd == "benchmark" || cmd == "visualize") return not_implemented(cmd);
+    if (cmd == "benchmark") return adaptive_restore::cli::cmd_benchmark(rest);
+    if (cmd == "visualize") return not_implemented(cmd);
 
     std::cerr << "arctl: unknown command '" << cmd << "'\n\n";
     return usage(std::cerr);

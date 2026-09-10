@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(adaptive_restore
-    VERSION 0.4.1
+    VERSION 0.4.2
     DESCRIPTION "Adaptive region-aware process restoration for Linux"
     LANGUAGES C CXX)
 
@@ -79,6 +79,7 @@ add_library(adaptive_restore STATIC
     src/checkpoint/regions.cpp
     src/checkpoint/capture.cpp
     src/checkpoint/unsupported_state.cpp
+    src/bench/suite.cpp
     src/policy/calibration.cpp
     src/policy/policy_engine.cpp
     ${AR_PROFILE_SOURCES}
@@ -100,7 +101,9 @@ add_executable(arctl
     src/cli/main.cpp
     src/cli/checkpoint_cmd.cpp
     src/cli/inspect_cmd.cpp
+    src/cli/benchmark_cmd.cpp
 )
+target_compile_definitions(arctl PRIVATE ARCTL_SELF_PATH="$<TARGET_FILE:arctl>")
 target_link_libraries(arctl PRIVATE adaptive_restore)
 if(SQLite3Opt_FOUND)
     target_sources(arctl PRIVATE src/cli/profile_cmd.cpp)

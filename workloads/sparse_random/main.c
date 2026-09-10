@@ -13,9 +13,12 @@
 
 #include "adaptive_restore/marker.h"
 
+/* Sized to match the other Tier 1 workloads. At 2 MiB the whole restore was
+ * ~10 ms regardless of policy: the bytes under study cost less than the fixed
+ * overhead, so every policy measured the same and the workload proved nothing. */
 #define PAGE   4096u
-#define PAGES  512u          /* 2 MiB of heap */
-#define TOUCH   16u          /* pages revisited after the checkpoint */
+#define PAGES  16384u        /* 64 MiB of heap */
+#define TOUCH   512u         /* ~3% revisited after the checkpoint */
 
 static unsigned long lcg(unsigned long *s) {
     return (*s = *s * 6364136223846793005UL + 1442695040888963407UL);
