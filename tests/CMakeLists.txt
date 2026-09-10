@@ -26,6 +26,7 @@ ar_add_test(capture unit/test_capture.cpp)
 
 if(Compel_FOUND)
     ar_add_test(restore_target unit/test_restore_target.cpp)
+    ar_add_test(address_space unit/test_address_space.cpp)
 endif()
 
 # Phase 1 exit gate: drives the real arctl binary against the real workload.
