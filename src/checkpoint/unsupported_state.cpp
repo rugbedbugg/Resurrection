@@ -7,6 +7,7 @@
 #include <cstring>
 #include <fstream>
 #include <sstream>
+#include <vector>
 
 #include "adaptive_restore/common/error.hpp"
 
@@ -63,6 +64,12 @@ UnsupportedState find_unsupported_state(pid_t pid) {
             out.reasons.push_back("installed signal handlers (SigCgt " + value +
                                   "); handler addresses are captured as memory but the "
                                   "dispositions that point at them are not");
+        // Pending-but-undelivered signals are dropped on the floor by a
+        // checkpoint: the image has nowhere to put them, so the restored
+        // process never receives what the original was about to.
+        else if ((key == "SigPnd" || key == "ShdPnd") && nonzero_mask())
+            out.reasons.push_back(std::string("pending signals (") + key + " " + value +
+                                  "); they would never be delivered to the restored process");
         else if (key == "Threads" && value != "1")
             out.reasons.push_back("multiple threads (" + value +
                                   "); Tier 1 captures only the leader's registers");
@@ -110,6 +117,57 @@ UnsupportedState find_unsupported_state(pid_t pid) {
     if (!target_cwd.empty() && !our_cwd.empty() && target_cwd != our_cwd)
         out.reasons.push_back("a working directory (" + target_cwd +
                               ") different from arctl's (" + our_cwd + ")");
+
+    // POSIX interval timers are kernel state with no memory footprint, so
+    // nothing in the image hints they existed; a restored process simply never
+    // fires them again.
+    {
+        std::ifstream timers("/proc/" + std::to_string(pid) + "/timers");
+        std::string l;
+        int n = 0;
+        while (std::getline(timers, l))
+            if (l.rfind("ID:", 0) == 0) ++n;
+        if (n > 0)
+            out.reasons.push_back(std::to_string(n) +
+                                  " POSIX interval timer(s); they are not captured and would "
+                                  "never fire again");
+    }
+
+    // File locks live in the kernel against the opening fd. The fd collector
+    // reopens regular files by path, which silently drops any lock held on
+    // them: the restored process would believe it holds a lock it does not.
+    {
+        std::ifstream locks("/proc/locks");
+        std::string l;
+        int n = 0;
+        while (std::getline(locks, l)) {
+            std::istringstream ls(l);
+            std::vector<std::string> tok;
+            std::string t;
+            while (ls >> t) tok.push_back(t);
+            // "-> " marks a blocked waiter; the columns are otherwise the same.
+            std::size_t base = (!tok.empty() && tok[0] == "->") ? 1 : 0;
+            if (tok.size() < base + 5) continue;
+            if (tok[base + 4] == std::to_string(pid)) ++n;
+        }
+        if (n > 0)
+            out.reasons.push_back(std::to_string(n) +
+                                  " file lock(s) held; descriptors are reopened by path on "
+                                  "restore, which does not carry the lock with them");
+    }
+
+    // A target that unshared a namespace is no longer in arctl's, and the
+    // restored process would silently land back in arctl's.
+    {
+        for (const char* ns : {"cgroup", "ipc", "mnt", "net", "pid", "time", "user", "uts"}) {
+            const std::string theirs = read_link("/proc/" + std::to_string(pid) + "/ns/" + ns);
+            const std::string ours = read_link(std::string("/proc/self/ns/") + ns);
+            if (!theirs.empty() && !ours.empty() && theirs != ours)
+                out.reasons.push_back(std::string("a ") + ns +
+                                      " namespace different from arctl's; the restored process "
+                                      "would run in arctl's instead");
+        }
+    }
 
     return out;
 }

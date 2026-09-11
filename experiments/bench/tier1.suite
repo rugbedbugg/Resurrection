@@ -6,7 +6,7 @@
 image_dir = /home/rugbedbugg/.cache/arcalib
 
 policies = eager, lazy, prefetch, cost
-caches = warm
+caches = cold, warm
 reps = 9
 teach_reps = 2
 

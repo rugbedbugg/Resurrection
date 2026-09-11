@@ -27,6 +27,7 @@ ar_add_test(calibration unit/test_calibration.cpp)
 ar_add_test(policy_engine unit/test_policy_engine.cpp)
 ar_add_test(plan unit/test_plan.cpp)
 ar_add_test(visualize unit/test_visualize.cpp)
+ar_add_test(bench_cache unit/test_bench_cache.cpp)
 
 if(SQLite3Opt_FOUND)
     ar_add_test(profile_store unit/test_profile_store.cpp)

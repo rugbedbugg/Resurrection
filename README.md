@@ -18,14 +18,27 @@ restores), or `--policy cost` (choose per 256 KiB region from an analytical cost
 model calibrated against this machine). `arctl benchmark` runs the workload
 suite and `arctl visualize` draws the result.
 
-On a workload with regions of genuinely different access behaviour, `--policy
-cost` beats every fixed policy by a median of ~16% and captures ~100% of the
-gain an oracle with perfect knowledge could achieve. Where a fixed policy is
-already optimal it matches that policy rather than losing to it, and when its
-recorded history is wrong it degrades in latency, never in correctness. Across all four Tier 1 benchmark workloads it is best on three and tied on the
-fourth, while every fixed policy is badly wrong on at least one (eager 89% worse
-on a sparse workload, lazy 238% worse on a dense one). Numbers and method:
-`docs/phase4-calibration-report.md`.
+The result worth stating is not a margin on a favourable workload, it is that
+**the adaptive policy has no bad case.** Over the Tier 1 suite (4 workloads x
+cold and warm x 9 reps), worst-case regret -- how far behind the best policy for
+a given workload a policy ever falls -- is:
+
+| policy | worst-case regret |
+|---|---|
+| lazy | +235% |
+| eager | +102% |
+| prefetch | +88% |
+| **cost** | **+9.9%** |
+
+Every fixed policy is catastrophically wrong on at least one workload; the
+adaptive one is never more than 10% off the best, and that 10% sits inside the
+run-to-run spread. On `mixed_regions`, the workload with regions of genuinely
+different access behaviour, `--policy cost` beat every fixed policy on 9 of 9
+repetitions with no overlap in range, and it captures ~100% of the gain an
+oracle with perfect knowledge could achieve. Where a fixed policy is already
+optimal it matches that policy rather than losing to it, and when its recorded
+history is wrong it degrades in latency, never in correctness. Numbers, spread,
+and method: `docs/phase4-calibration-report.md`.
 
 Restore needs `criu`/`compel` at build time; checkpoint and inspect do not, and
 a build without compel is supported (it simply has no `restore`).

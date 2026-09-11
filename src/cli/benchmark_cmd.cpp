@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+#include "adaptive_restore/bench/cache.hpp"
 #include "adaptive_restore/bench/suite.hpp"
 #include "adaptive_restore/cli/commands.hpp"
 #include "adaptive_restore/common/error.hpp"
@@ -110,6 +111,20 @@ int cmd_benchmark(std::span<const std::string_view> args) {
                         std::string extra = "--" + cache + "-cache";
                         if (pol == "prefetch" || pol == "cost")
                             extra += " --profile " + prof + " --no-learn";
+
+                        // "cold" has to be made true, not just declared.
+                        // --cold-cache only tells the cost model which
+                        // calibration to use; without this the image stays in
+                        // the page cache from the previous run and the row is
+                        // a warm measurement wearing a cold label.
+                        if (cache == "cold") {
+                            std::string why;
+                            if (!bench::evict_from_page_cache(img, why) ||
+                                !bench::evict_from_page_cache(wl, why))
+                                return fail("cannot produce a cold cache: " + why +
+                                            "\n       Refusing to record cold rows that are "
+                                            "warm measurements (§26).");
+                        }
 
                         const double t0 = now_ms();
                         run(self + " restore --image " + img + " --policy " + pol + " " + extra +
