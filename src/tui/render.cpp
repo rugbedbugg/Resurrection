@@ -224,29 +224,42 @@ void render_policy_comparison(std::ostream& os, const std::vector<BenchRow>& row
         if (!r.output_ok) any_bad_output = true;
     }
 
-    const std::size_t bar_width = style.width > 46 ? style.width - 40 : 24;
+    const std::size_t bar_width = style.width > 62 ? style.width - 56 : 18;
     for (const auto& [key, per_policy] : by_case) {
-        std::map<std::string, double> med;
+        std::map<std::string, double> med, lo, hi;
         double worst = 0.0, best = 1e300;
+        std::string best_pol;
         for (const auto& [pol, samples] : per_policy) {
+            auto sorted = samples;
+            std::sort(sorted.begin(), sorted.end());
             med[pol] = median(samples);
+            lo[pol] = sorted.front();
+            hi[pol] = sorted.back();
             worst = std::max(worst, med[pol]);
-            best = std::min(best, med[pol]);
+            if (med[pol] < best) { best = med[pol]; best_pol = pol; }
         }
         os << "\n  " << key.first << "  (" << key.second << " cache, "
            << per_policy.begin()->second.size() << " reps)\n";
         for (const auto& [pol, ms] : med) {
-            const bool winner = ms <= best;
-            char head[64];
-            std::snprintf(head, sizeof head, "    %-9s %7.1f ms  ", pol.c_str(), ms);
+            char head[80];
+            std::snprintf(head, sizeof head, "    %-9s %6.1f ms [%5.1f..%5.1f] ", pol.c_str(), ms,
+                          lo.at(pol), hi.at(pol));
             os << head;
             const std::string b = bar(worst > 0 ? ms / worst : 0.0, bar_width);
+            const bool winner = pol == best_pol;
             os << (winner ? paint(style, "\033[32m", b) : b);
+
+            // A median gap between two distributions that overlap is not a
+            // result, and printing "+6%" next to it reads as one. Say so
+            // instead: this view exists to make a comparison, which obliges it
+            // not to manufacture one.
             if (winner) os << paint(style, "\033[32m", "  best");
+            else if (lo.at(pol) <= hi.at(best_pol) && lo.at(best_pol) <= hi.at(pol))
+                os << paint(style, kDim, "  = within spread");
             else {
                 char tail[32];
                 std::snprintf(tail, sizeof tail, "  +%.0f%%", best > 0 ? (ms / best - 1.0) * 100.0 : 0.0);
-                os << paint(style, kDim, tail);
+                os << tail;
             }
             os << '\n';
         }

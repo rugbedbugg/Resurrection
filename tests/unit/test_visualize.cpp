@@ -26,20 +26,50 @@ int main() {
         // Deliberately even-sized and out of order: the median must be the mean
         // of the middle pair, not whatever happened to be parsed first.
         std::vector<BenchRow> rows;
-        for (double ms : {40.0, 10.0, 30.0, 20.0})
+        for (double ms : {26.0, 24.0, 25.0, 25.0})
             rows.push_back({"w", "eager", "warm", ms, 0, true});
-        for (double ms : {9.0, 11.0, 13.0, 7.0})
+        for (double ms : {9.0, 11.0, 10.0, 10.0})
             rows.push_back({"w", "cost", "warm", ms, 5, true});
 
         std::ostringstream os;
         render_policy_comparison(os, rows, plain);
         const auto out = os.str();
-        assert(has(out, "eager        25.0 ms"));
-        assert(has(out, "cost         10.0 ms"));
+        assert(has(out, "eager       25.0 ms"));
+        assert(has(out, "cost        10.0 ms"));
         // The winner is marked, and the loser carries the gap that follows from
         // the medians above: 25.0 / 10.0 - 1 = +150%.
         assert(has(out, "best"));
         assert(has(out, "+150%"));
+    }
+
+    // --- a median gap between overlapping distributions is not a result ------
+    {
+        // Medians 20 and 22, but every sample of each lands inside the other's
+        // range. Reporting "+10%" there would manufacture a finding; this is
+        // exactly the overstatement that had to be corrected in the report.
+        std::vector<BenchRow> rows;
+        for (double ms : {10.0, 20.0, 30.0})
+            rows.push_back({"w", "a", "warm", ms, 0, true});
+        for (double ms : {12.0, 22.0, 32.0})
+            rows.push_back({"w", "b", "warm", ms, 0, true});
+        std::ostringstream os;
+        render_policy_comparison(os, rows, plain);
+        const auto out = os.str();
+        assert(has(out, "within spread"));
+        assert(!has(out, "+10%"));
+        assert(has(out, "[ 10.0.. 30.0]") && "the spread itself must be shown, not just judged");
+    }
+
+    // --- a real separation must still be reported as one ---------------------
+    {
+        std::vector<BenchRow> rows;
+        for (double ms : {10.0, 11.0, 12.0}) rows.push_back({"w", "a", "warm", ms, 0, true});
+        for (double ms : {40.0, 41.0, 42.0}) rows.push_back({"w", "b", "warm", ms, 0, true});
+        std::ostringstream os;
+        render_policy_comparison(os, rows, plain);
+        const auto out = os.str();
+        assert(!has(out, "within spread"));
+        assert(has(out, "+273%"));   // 41 / 11 - 1
     }
 
     // --- a wrong-output run must not be presented as a result ----------------
