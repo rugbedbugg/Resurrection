@@ -52,7 +52,8 @@ struct OracleBound {
     std::uint64_t regions_lazy = 0;
 };
 
-// `history` must carry touched bitmaps recorded under a deferring policy;
+// `history` must carry touched bitmaps recorded from regions left pure lazy
+// (a prefetched region does not fault, so it observes nothing);
 // regions without one are assumed fully touched, which is the conservative
 // reading (it can only make the bound looser, never optimistic).
 OracleBound oracle_bound(const image::ImageReader& image,

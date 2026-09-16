@@ -68,9 +68,11 @@ int cmd_restore(std::span<const std::string_view> args) {
     }
 
     if (image_path.empty())
-        return fail("usage: arctl restore --image <image> --policy eager|lazy "
-                    "[--verify] [--record-trace <path>] [--profile <db>] "
-                    "[--cold-cache|--warm-cache] [--no-learn]");
+        return fail("usage: arctl restore --image <image>\n"
+                    "         [--policy eager|lazy|prefetch|cost]  (default eager;\n"
+                    "          prefetch and cost also need --profile)\n"
+                    "         [--profile <db>] [--verify] [--record-trace <path>]\n"
+                    "         [--cold-cache|--warm-cache] [--no-learn]");
     if (policy == "eager") {
         opts.policy = restore::RestorePolicy::Eager;
     } else if (policy == "lazy") {
@@ -179,9 +181,19 @@ int cmd_restore(std::span<const std::string_view> args) {
                 else if (d.action == paging::RestoreAction::StaticPrefetch) ++n_pref;
                 else ++n_lazy;
             }
+            // The cost model only ever sees uffd-eligible regions; the rest are
+            // forced eager before it runs. Without this reconciliation the two
+            // lines look like they disagree (90 eager above vs 68 here).
+            const std::size_t eligible = s.decisions.size();
+            const std::size_t forced =
+                s.actions.size() > eligible ? s.actions.size() - eligible : 0;
             std::cout << "  decisions  " << n_eager << " eager, " << n_pref << " prefetch, "
                       << n_lazy << " lazy  (" << (opts.cold_cache ? "cold" : "warm")
                       << "-cache calibration)\n";
+            if (forced > 0)
+                std::cout << "             of " << eligible << " eligible regions; " << forced
+                          << " more forced eager, so " << (n_eager + forced) << " / "
+                          << (n_pref + n_lazy) << " above\n";
             std::cout << "             region     chose   cost_eager  cost_prefetch"
                          "   cost_lazy   conf\n";
             std::size_t shown = 0;
@@ -249,8 +261,11 @@ int cmd_restore(std::span<const std::string_view> args) {
                           << " faults written to " << opts.trace_path << '\n';
             }
 #ifdef AR_HAVE_SQLITE
-            // Only a restore that deferred pages can teach: a page that was
-            // written up front never faults, so nothing observes it.
+            // Only regions left *pure lazy* teach. A page written up front never
+            // faults, so nothing observes it -- and that includes the pages a
+            // prefetch region loaded from history, which is why a --policy
+            // prefetch run records nothing at all and a --policy cost run
+            // records only its lazy regions. See region_profiler.hpp.
             if (!opts.profile_path.empty() && opts.learn) {
                 const auto observed = profile::observe_regions(
                     image, s.session->provider->trace(), s.actions);

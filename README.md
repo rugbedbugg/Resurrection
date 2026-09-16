@@ -105,14 +105,19 @@ the plan a restore *would* choose, from the same `plan_restore()` the restorer
 calls, so the picture cannot drift from the behaviour; `--trace` draws when
 demand faults arrived.
 
-A restore under a deferring policy teaches the profile; later restores of the
-same checkpoint identity read it back. `--profile` needs SQLite, which like
-`compel` is restore-side only: a build without either still checkpoints and
-inspects.
+A restore teaches the profile only from the regions it left *pure lazy*, since
+only those fault on first touch and so reveal what was actually used: `--policy
+lazy` teaches every eligible region, `--policy cost` teaches the subset it chose
+to leave lazy, and `--policy prefetch` teaches nothing. Later restores of the
+same checkpoint identity read that history back. `--profile` needs SQLite,
+which like `compel` is restore-side only: a build without either still
+checkpoints and inspects.
 
-Under `--policy lazy`, `arctl` stays alive as the target's page server for as
-long as it runs. `--record-trace` writes one row per demand fault; because every
-first touch faults, that trace is the workload's touched set.
+Under any deferring policy, `arctl` stays alive as the target's page server for
+as long as it runs. `--record-trace` writes one row per demand fault; under
+`--policy lazy` every first touch faults, so that trace is exactly the
+workload's touched set. Under the other policies it is only the part of the
+touched set that was not already loaded up front.
 
 `--verify` re-reads every captured page from the live process and re-checksums
 it against the first pass; a mismatch leaves no image behind. The target's

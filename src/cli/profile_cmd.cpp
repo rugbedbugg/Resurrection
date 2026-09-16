@@ -80,8 +80,8 @@ int cmd_profile(std::span<const std::string_view> args) {
                   << "  restores   " << store.restores_recorded(key) << '\n'
                   << "  regions    " << rows.size() << "\n\n";
         if (rows.empty()) {
-            std::cout << "  no history for this identity yet; run a restore with a deferring\n"
-                         "  policy and --profile to record one\n";
+            std::cout << "  no history for this identity yet; run a restore with\n"
+                         "  --policy lazy and --profile to record one\n";
             return 0;
         }
 
