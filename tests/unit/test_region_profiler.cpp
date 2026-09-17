@@ -1,6 +1,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstdio>
+#include <initializer_list>
 #include <vector>
 
 #include "adaptive_restore/image/image_reader.hpp"
@@ -45,60 +46,97 @@ int main() {
         {kB + 2 * 4096, 1, 0, 0, 0, 1},
     };
 
-    // --- both regions lazy: both observable --------------------------------
-    {
-        const std::vector<RestoreAction> actions{RestoreAction::Lazy, RestoreAction::Lazy};
-        const auto obs = observe_regions(image, trace, actions);
-        assert(obs.size() == 2);
-        assert(std::fabs(obs[0].fraction_accessed_avg - 0.25f) < 1e-6);
-        assert(std::fabs(obs[1].fraction_accessed_avg - 0.75f) < 1e-6);
-        assert(obs[0].zero_page_fraction == 0.0f);
-        assert(std::fabs(obs[1].zero_page_fraction - 0.5f) < 1e-6);
-        assert(obs[0].restore_count == 1 && "one observation per restore");
+    // Helpers: how the provider describes what it actually did.
+    const auto deferred = [] { return RegionExecution{EffectiveAction::FullyDeferred, {}}; };
+    const auto eager    = [] { return RegionExecution{EffectiveAction::EagerWritten, {}}; };
+    const auto partial  = [](std::initializer_list<std::uint32_t> populated) {
+        RegionExecution e{EffectiveAction::PrefetchedPartial, std::vector<std::uint8_t>(1, 0)};
+        for (auto p : populated) e.populated[p / 8] |= static_cast<std::uint8_t>(1u << (p % 8));
+        return e;
+    };
 
-        // The bitmap must name WHICH pages, not just how many: a fraction
-        // cannot tell a prefetcher what to load (§9.5).
-        assert(!obs[0].touched_bitmap.empty());
-        assert(!obs[0].page_was_touched(0) && obs[0].page_was_touched(1) &&
-               !obs[0].page_was_touched(2) && !obs[0].page_was_touched(3));
-        assert(obs[1].page_was_touched(0) && obs[1].page_was_touched(1) &&
-               obs[1].page_was_touched(2) && !obs[1].page_was_touched(3));
+    // --- both regions fully deferred: every page observable ----------------
+    {
+        const std::vector<RegionExecution> ex{deferred(), deferred()};
+        const auto obs = observe_regions(image, trace, ex);
+        assert(obs.size() == 2);
+        assert(obs[0].fully_observable() && obs[1].fully_observable());
+        assert(obs[0].observable_count() == 4 && obs[0].touched_count() == 1);
+        assert(obs[1].observable_count() == 4 && obs[1].touched_count() == 3);
+
+        const auto hist = to_history(obs);
+        assert(hist.size() == 2);
+        assert(std::fabs(hist[0].fraction_accessed_avg - 0.25f) < 1e-6);
+        assert(std::fabs(hist[1].fraction_accessed_avg - 0.75f) < 1e-6);
+        assert(std::fabs(hist[1].zero_page_fraction - 0.5f) < 1e-6);
+        assert(hist[0].restore_count == 1 && "one observation per restore");
+
+        // The bitmap must name WHICH pages, not just how many (§9.5).
+        assert(!hist[0].page_was_touched(0) && hist[0].page_was_touched(1) &&
+               !hist[0].page_was_touched(2) && !hist[0].page_was_touched(3));
+        assert(hist[1].page_was_touched(0) && hist[1].page_was_touched(1) &&
+               hist[1].page_was_touched(2) && !hist[1].page_was_touched(3));
     }
 
     // --- an eager region is UNOBSERVABLE and must be left alone ------------
     // Its pages were present, so nothing faulted. Recording 0% would teach the
-    // controller "never accessed" about a region it correctly loaded eagerly,
-    // and push it toward lazy next time. That is the trap this guards.
+    // controller "never accessed" about a region it correctly loaded eagerly.
     {
-        const std::vector<RestoreAction> actions{RestoreAction::Eager, RestoreAction::Lazy};
-        const auto obs = observe_regions(image, trace, actions);
-        assert(obs.size() == 1 && "an eagerly prepared region yields no observation");
+        const std::vector<RegionExecution> ex{eager(), deferred()};
+        const auto obs = observe_regions(image, trace, ex);
+        assert(obs.size() == 1 && "an eagerly written region yields no observation");
         assert(obs[0].region_id == 1);
     }
+
+    // --- a degenerated prefetch IS fully observable ------------------------
+    // Requested StaticPrefetch, but with no usable history nothing was written,
+    // so the provider reports FullyDeferred and every fault is real evidence.
+    // Keying off the REQUESTED action discarded exactly this case.
     {
-        const std::vector<RestoreAction> actions{RestoreAction::StaticPrefetch,
-                                                 RestoreAction::StaticPrefetch};
-        assert(observe_regions(image, trace, actions).empty() &&
-               "prefetched regions are partly present, so their access is not observable either");
+        const std::vector<RegionExecution> ex{deferred(), deferred()};
+        const auto obs = observe_regions(image, trace, ex);
+        assert(obs.size() == 2 && "a prefetch that wrote nothing is observable");
+        assert(!to_history(obs).empty() && "and must reach the profile");
+    }
+
+    // --- a partially prefetched region: only absent pages are observable ---
+    {
+        // Pages 0 and 2 of region 0 were written before resume; 1 and 3 absent.
+        const std::vector<RegionExecution> ex{partial({0, 2}), eager()};
+        const auto obs = observe_regions(image, trace, ex);
+        assert(obs.size() == 1);
+        assert(obs[0].observable_count() == 2 && "only the absent pages carry evidence");
+        assert(!obs[0].fully_observable());
+        assert(obs[0].bit(obs[0].observable, 1) && obs[0].bit(obs[0].observable, 3));
+        assert(!obs[0].bit(obs[0].observable, 0) && !obs[0].bit(obs[0].observable, 2));
+        // Page 1 faulted, so it is positive evidence.
+        assert(obs[0].bit(obs[0].touched, 1) && obs[0].touched_count() == 1);
+
+        // A resident page that did not fault is UNKNOWN, never a negative.
+        // v2 history has no way to say "unknown", so the region is not stored.
+        std::uint32_t skipped = 0;
+        const auto hist = to_history(obs, &skipped);
+        assert(hist.empty() && skipped == 1 &&
+               "partial evidence must not be flattened into a full bitmap");
     }
 
     // --- a region nobody touched is still observed, as zero ----------------
     {
-        const std::vector<RestoreAction> actions{RestoreAction::Lazy, RestoreAction::Lazy};
-        const auto obs = observe_regions(image, {}, actions);
+        const std::vector<RegionExecution> ex{deferred(), deferred()};
+        const auto obs = observe_regions(image, {}, ex);
         assert(obs.size() == 2);
-        assert(obs[0].fraction_accessed_avg == 0.0f &&
-               "under lazy, no faults genuinely means untouched");
+        const auto hist = to_history(obs);
+        assert(hist[0].fraction_accessed_avg == 0.0f &&
+               "with every page absent, no faults genuinely means untouched");
     }
 
     // --- a repeated fault on one page must not inflate the fraction --------
     {
         std::vector<FaultRecord> dup{{kA, 0, 0, 0, 4096, 0}, {kA, 0, 0, 0, 4096, 0},
                                      {kA, 0, 0, 0, 4096, 0}};
-        const std::vector<RestoreAction> actions{RestoreAction::Lazy, RestoreAction::Lazy};
-        const auto obs = observe_regions(image, dup, actions);
-        assert(std::fabs(obs[0].fraction_accessed_avg - 0.25f) < 1e-6 &&
-               "distinct pages, not fault count");
+        const std::vector<RegionExecution> ex{deferred(), deferred()};
+        const auto obs = observe_regions(image, dup, ex);
+        assert(obs[0].touched_count() == 1 && "distinct pages, not fault count");
     }
 
     std::puts("test_region_profiler: ok");

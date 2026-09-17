@@ -2,6 +2,9 @@
 
 #include <cmath>
 #include <cstdint>
+#include <fstream>
+#include <unordered_set>
+#include <cstdlib>
 #include <iostream>
 #include <string>
 
@@ -255,6 +258,38 @@ int cmd_restore(std::span<const std::string_view> args) {
             if (ls.faults_served > 0)
                 std::cout << "  latency    " << (ls.service_ns_total / ls.faults_served)
                           << " ns mean per fault, " << ls.service_ns_total << " ns total\n";
+            // EXPERIMENTAL (Phase 6A spike): dump every page the prediction
+            // named, flagged with whether it was withheld. Off unless the env
+            // var is set, so no normal restore writes this.
+            if (const char* rp = std::getenv("AR_EXPERIMENTAL_HOLDOUT_REPORT")) {
+                const auto regions = image.regions();
+                const auto pidx = image.page_index();
+                const auto& ex = s.executions;
+                std::unordered_set<std::uint64_t> held;
+                for (const auto& h : s.session->provider->holdouts()) held.insert(h.vaddr);
+                std::unordered_set<std::uint64_t> faulted;
+                for (const auto& f : s.session->provider->trace()) faulted.insert(f.vaddr);
+
+                std::ofstream f(rp);
+                f << "region\tpage\tvaddr\tpredicted\theld_out\tfaulted\n";
+                for (std::size_t i = 0; i < regions.size() && i < ex.size(); ++i) {
+                    const auto& r = regions[i];
+                    const std::uint32_t n = r.page_index_hi - r.page_index_lo;
+                    for (std::uint32_t p = 0; p < n; ++p) {
+                        const std::uint32_t gi = r.page_index_lo + p;
+                        if (gi >= pidx.size()) continue;
+                        const std::uint64_t va = pidx[gi].vaddr;
+                        const bool wrote = ex[i].populated_page(p);
+                        const bool out = held.count(va) > 0;
+                        if (!wrote && !out) continue;   // not part of the prediction
+                        f << r.region_id << '\t' << p << '\t' << va << '\t' << 1 << '\t'
+                          << (out ? 1 : 0) << '\t' << (faulted.count(va) ? 1 : 0) << '\n';
+                    }
+                }
+                std::cout << "  holdout    report written to " << rp << " (k="
+                          << s.session->provider->stats().pages_held_out << " pages withheld)\n";
+            }
+
             if (!opts.trace_path.empty()) {
                 s.session->provider->write_trace_to(opts.trace_path);
                 std::cout << "  trace      " << s.session->provider->trace().size()
@@ -268,15 +303,24 @@ int cmd_restore(std::span<const std::string_view> args) {
             // records only its lazy regions. See region_profiler.hpp.
             if (!opts.profile_path.empty() && opts.learn) {
                 const auto observed = profile::observe_regions(
-                    image, s.session->provider->trace(), s.actions);
+                    image, s.session->provider->trace(), s.executions);
+                std::uint32_t partial = 0;
+                const auto history = profile::to_history(observed, &partial);
                 profile::ProfileKey key;
                 key.image_digest = image.identity_digest();
                 key.region_layout_version = kRegionLayoutVersion;
                 key.feature_schema_version = kFeatureSchemaVersion;
                 auto store = profile::ProfileStore::open(opts.profile_path);
-                store.record(key, observed);
-                std::cout << "  profile    " << observed.size() << " regions recorded ("
+                store.record(key, history);
+                std::cout << "  observed   " << observed.size()
+                          << " regions witnessed evidence\n"
+                          << "  profile    " << history.size() << " regions recorded ("
                           << store.restores_recorded(key) << " restores learned)\n";
+                if (partial > 0)
+                    std::cout << "             " << partial
+                              << " partially observed regions not stored: v2 history cannot\n"
+                                 "             mark a page unknown, and a resident page is "
+                                 "unknown, not untouched\n";
             }
 #endif
             st = served.exit_status;

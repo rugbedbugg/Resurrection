@@ -80,9 +80,17 @@ RestorePlan plan_restore(const image::ImageReader& image,
         case RestorePolicy::Lazy:
             out.actions[i] = paging::RestoreAction::Lazy;
             break;
-        case RestorePolicy::Prefetch:
-            out.actions[i] = paging::RestoreAction::StaticPrefetch;
+        case RestorePolicy::Prefetch: {
+            // Requesting a prefetch the provider cannot perform produces a
+            // region that silently behaves as lazy while still being labelled
+            // StaticPrefetch. Decide it here, where the outcome is knowable,
+            // so requested and effective action agree.
+            const auto it = by_id.find(regions[i].region_id);
+            const bool usable = it != by_id.end() && !it->second->touched_bitmap.empty();
+            out.actions[i] = usable ? paging::RestoreAction::StaticPrefetch
+                                    : paging::RestoreAction::Lazy;
             break;
+        }
         case RestorePolicy::Cost: {
             const auto it = by_id.find(regions[i].region_id);
             const auto f = features_for(regions[i], mappings, pages, page_size,

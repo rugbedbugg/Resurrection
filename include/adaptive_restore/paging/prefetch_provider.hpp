@@ -31,6 +31,32 @@ struct PrefetchStats {
     std::uint64_t unused = 0;              // prefetched but never demanded
     std::uint64_t regions_without_history = 0;  // degraded to pure lazy
     std::uint64_t already_present = 0;           // prefetch was a no-op; see EEXIST above
+    std::uint64_t pages_held_out = 0;            // EXPERIMENTAL: see HoldoutConfig
+};
+
+// EXPERIMENTAL (Phase 6A spike, off by default).
+//
+// Withhold k pages of each region's predicted set from prefetching so they
+// stay absent and therefore fault if the workload still wants them. The fault
+// rate over the held-out sample estimates the prediction's precision, which is
+// otherwise unobservable: a prefetched page is resident and reveals nothing.
+//
+// This is instrumentation, NOT policy. The planner does not know it exists and
+// nothing enables it automatically; `arctl` reads it from the environment so a
+// spike script can sweep k without a production flag existing.
+struct HoldoutConfig {
+    std::uint32_t k = 0;      // pages withheld per region; 0 disables entirely
+    std::uint64_t seed = 0;   // recorded with every result for reproducibility
+
+    static HoldoutConfig from_env();   // AR_EXPERIMENTAL_HOLDOUT_{K,SEED}
+    bool enabled() const { return k > 0; }
+};
+
+// One withheld page and what became of it.
+struct HoldoutRecord {
+    std::uint32_t region_id = 0;
+    std::uint32_t page_index = 0;   // within the region
+    std::uint64_t vaddr = 0;
 };
 
 // Loads the historically-touched subset of a region up front and leaves the
@@ -53,6 +79,14 @@ public:
     const PrefetchStats& stats() const { return stats_; }
     const LazyStats& lazy_stats() const { return lazy_.stats(); }
     const std::vector<FaultRecord>& trace() const { return lazy_.trace(); }
+
+    // What each region's execution actually was, indexed by region id. The
+    // profiler reads this instead of the requested action.
+    const std::vector<RegionExecution>& executions() const { return exec_; }
+
+    // EXPERIMENTAL: pages deliberately withheld this run.
+    const std::vector<HoldoutRecord>& holdouts() const { return holdouts_; }
+    void set_holdout(const HoldoutConfig& h) { holdout_ = h; }
     void record_trace(bool on) { lazy_.record_trace(on); }
     void write_trace_to(const std::string& path) const { lazy_.write_trace(path); }
 
@@ -81,6 +115,9 @@ private:
     LazyProvider lazy_;  // owns registration and fault resolution
     std::unordered_map<std::uint32_t, profile::RegionHistory> history_;
     std::vector<std::uint64_t> prefetched_vaddrs_;
+    std::vector<RegionExecution> exec_;
+    HoldoutConfig holdout_;
+    std::vector<HoldoutRecord> holdouts_;
     PrefetchStats stats_;
 };
 

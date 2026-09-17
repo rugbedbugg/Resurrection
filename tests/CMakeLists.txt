@@ -35,6 +35,15 @@ if(SQLite3Opt_FOUND)
     ar_add_test(metrics unit/test_metrics.cpp)
 
     if(Compel_FOUND)
+        # Phase 6A regression: prefetch-fault evidence must not be discarded.
+        # Needs SQLite as well as compel: --policy prefetch requires --profile.
+        ar_add_test(prefetch_observes integration/test_prefetch_observes.cpp)
+        target_compile_definitions(test_prefetch_observes PRIVATE
+            ARCTL_PATH="$<TARGET_FILE:arctl>"
+            SPARSE_PATH="$<TARGET_FILE:workload_sparse_random>")
+        add_dependencies(test_prefetch_observes arctl workload_sparse_random)
+        set_tests_properties(prefetch_observes PROPERTIES TIMEOUT 300)
+
         # Phase 4 exit gate: the controller must beat every fixed policy.
         ar_add_test(cost_model_gate integration/test_cost_model_gate.cpp)
         target_compile_definitions(test_cost_model_gate PRIVATE
@@ -68,6 +77,14 @@ if(Compel_FOUND)
         ARCTL_PATH="$<TARGET_FILE:arctl>"
         SPARSE_PATH="$<TARGET_FILE:workload_sparse_random>")
     add_dependencies(test_restore_sparse arctl workload_sparse_random)
+
+    # Phase 6A: one image, two working sets, chosen by an external control file.
+    ar_add_test(phase_change integration/test_phase_change.cpp)
+    target_compile_definitions(test_phase_change PRIVATE
+        ARCTL_PATH="$<TARGET_FILE:arctl>"
+        PHASE_PATH="$<TARGET_FILE:workload_sudden_phase_change>")
+    add_dependencies(test_phase_change arctl workload_sudden_phase_change)
+    set_tests_properties(phase_change PROPERTIES TIMEOUT 300)
 
     # Phase 2 exit gate: real arctl, real workload, checkpoint then restore.
     ar_add_test(restore_mini integration/test_restore_mini.cpp)

@@ -56,7 +56,10 @@ struct RestoreSummary {
     std::vector<policy::RegionDecision> decisions;  // populated under Cost
     double predicted_transfer_s = 0.0;             // sum of the chosen arms' costs
     bool deferral_declined = false;                // plan did not repay the setup cost
-    std::vector<paging::RestoreAction> actions;  // what each region was prepared with
+    std::vector<paging::RestoreAction> actions;  // what each region was REQUESTED with
+    // What each region's execution actually was. Differs from `actions` when a
+    // prefetch had nothing to load; the profiler must read this, not `actions`.
+    std::vector<paging::RegionExecution> executions;
     std::uint64_t regions_eager = 0;
     std::uint64_t regions_lazy = 0;
     std::uint64_t resume_latency_ns = 0;  // invocation to first resumed instruction (§22)

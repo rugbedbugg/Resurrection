@@ -112,6 +112,9 @@ RestoreSummary restore_image(const image::ImageReader& image, const RestoreOptio
         session->provider = std::make_unique<paging::PrefetchProvider>(image, *target,
                                                                       *session->uffd, history);
         session->provider->record_trace(!opts.trace_path.empty() || !opts.profile_path.empty());
+        // EXPERIMENTAL (Phase 6A spike): unset in every normal run, so the
+        // default restore path is bit-identical to v0.5.1.
+        session->provider->set_holdout(paging::HoldoutConfig::from_env());
     }
 
     for (std::size_t i = 0; i < regions.size(); ++i) {
@@ -123,6 +126,15 @@ RestoreSummary restore_image(const image::ImageReader& image, const RestoreOptio
             session->provider->prepare_region(id, actions[i]);
             ++out.regions_lazy;
         }
+    }
+
+    // Eager regions witness nothing; the provider only reports what it deferred,
+    // so fill the rest in as EagerWritten before handing it to the profiler.
+    out.executions.assign(regions.size(), paging::RegionExecution{});
+    if (session) {
+        const auto& ex = session->provider->executions();
+        for (std::size_t i = 0; i < ex.size() && i < out.executions.size(); ++i)
+            if (actions[i] != paging::RestoreAction::Eager) out.executions[i] = ex[i];
     }
 
     // §9.2: every saved page is now either written or covered by a handler.
