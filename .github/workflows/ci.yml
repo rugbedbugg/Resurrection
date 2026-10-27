@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Configure
+        run: nix develop --command cmake -B build -G Ninja
+
+      - name: Build
+        run: nix develop --command cmake --build build -j4
+
+      # nix develop turns ASLR off, and the restorer depends on it to place a
+      # stub whose TLS block misses the image. setarch resets the personality
+      # so the restored process is randomised again.
+      - name: Test
+        run: >-
+          nix develop --command
+          setarch x86_64 ctest --test-dir build --output-on-failure
+          -E cost_model_gate
+
+      # The gate compares restore latency against a cost model calibrated on one
+      # machine, so a runner is expected to miss the bar. Run it for the numbers.
+      - name: Cost model gate (report only)
+        env:
+          AR_GATE_REPORT_ONLY: "1"
+        run: >-
+          nix develop --command
+          setarch x86_64 ctest --test-dir build --output-on-failure
+          -R cost_model_gate
+
+  configurations:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        flags:
+          - -DAR_FORCE_NO_COMPEL=ON
+          - -DAR_FORCE_NO_SQLITE=ON
+          - -DAR_FORCE_NO_COMPEL=ON -DAR_FORCE_NO_SQLITE=ON
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Build without optional dependencies
+        run: >-
+          nix develop --command bash -c
+          'cmake -B build -G Ninja ${{ matrix.flags }} && cmake --build build -j4'

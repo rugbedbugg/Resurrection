@@ -1,5 +1,5 @@
-# All markdown docs live in /docs and are intentionally NOT tracked.
-# Only the root README.md is committed.
+# Design notes, phase reports and specs live in /docs and are intentionally NOT
+# tracked. Only the root README, NIX-DEVELOPMENT and CONTRIBUTING files are.
 /docs/
 
 # Build output
@@ -33,3 +33,8 @@ compile_commands.json
 .idea/
 .vscode/
 *.swp
+
+# Nix
+/result
+/result-*
+/.direnv/

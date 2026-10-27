@@ -44,7 +44,8 @@ Restore needs `criu`/`compel` at build time; checkpoint and inspect do not, and
 a build without compel is supported (it simply has no `restore`).
 
 Design drafts, phase reports, and specs live in `docs/` — a local, untracked
-working folder. This README is the only committed prose.
+working folder. Only this README, `NIX-DEVELOPMENT.md` and `CONTRIBUTING.md` are
+committed prose.
 
 ## Scope (Tier 1 — the committed deliverable)
 
@@ -76,6 +77,9 @@ cmake -B build -G Ninja
 cmake --build build
 ctest --test-dir build
 ```
+
+On NixOS, `nix develop path:.` supplies this toolchain including `criu`, `compel`
+and SQLite. See `NIX-DEVELOPMENT.md`.
 
 ## Usage
 
