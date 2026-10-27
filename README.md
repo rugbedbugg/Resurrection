@@ -37,15 +37,21 @@ different access behaviour, `--policy cost` beat every fixed policy on 9 of 9
 repetitions with no overlap in range, and it captures ~100% of the gain an
 oracle with perfect knowledge could achieve. Where a fixed policy is already
 optimal it matches that policy rather than losing to it, and when its recorded
-history is wrong it degrades in latency, never in correctness. Numbers, spread,
-and method: `docs/phase4-calibration-report.md`.
+history is wrong it degrades in latency, never in correctness.
+
+These numbers were measured on one development machine, and the cost model's
+constants (`src/policy/calibration.cpp`) were calibrated on that same machine.
+Other hardware can rank the policies differently. To measure your own machine,
+run `arctl benchmark` (below) and the cost-model gate in report-only mode (see
+`NIX-DEVELOPMENT.md`).
 
 Restore needs `criu`/`compel` at build time; checkpoint and inspect do not, and
 a build without compel is supported (it simply has no `restore`).
 
-Design drafts, phase reports, and specs live in `docs/` — a local, untracked
-working folder. Only this README, `NIX-DEVELOPMENT.md` and `CONTRIBUTING.md` are
-committed prose.
+Design drafts, phase reports, and specs live in `docs/`, a local working folder
+that is deliberately not tracked. A clone does not contain it, so references to
+`docs/…` in source comments point at the maintainer's notes. Only this README,
+`NIX-DEVELOPMENT.md` and `CONTRIBUTING.md` are committed prose.
 
 ## Scope (Tier 1 — the committed deliverable)
 
@@ -60,15 +66,17 @@ committed prose.
 ## Layout
 
 ```
-docs/          design drafts, phase reports, specs   (local, untracked)
-include/        public headers (adaptive_restore/…)
-src/           checkpoint · restore · image · paging · policy · profile · metrics · cli · tui
-restorer/      freestanding restore bootstrap (compel-based or from-scratch — see §9.1)
+include/       public headers (adaptive_restore/…)
+src/           common | checkpoint | restore | image | paging | policy | profile | bench | cli | tui
 workloads/     synthetic benchmark targets
-tests/         unit · integration · correctness
-experiments/   phase0 probes, benchmark configs + scripts + raw results
-third_party/   vendored deps (compel, if used)
+tests/         unit | integration
+experiments/   phase spike probes, the Tier 1 benchmark suite, raw/ (ignored output)
+cmake/         find modules for the optional compel and SQLite dependencies
+flake.nix      NixOS development shell (see NIX-DEVELOPMENT.md)
+docs/          design drafts, phase reports, specs   (local only, not in a clone)
 ```
+
+compel and SQLite come from the system (or the Nix shell). Nothing is vendored.
 
 ## Build
 
@@ -78,8 +86,10 @@ cmake --build build
 ctest --test-dir build
 ```
 
-On NixOS, `nix develop path:.` supplies this toolchain including `criu`, `compel`
-and SQLite. See `NIX-DEVELOPMENT.md`.
+On NixOS, `nix develop` supplies this toolchain including `criu`, `compel` and
+SQLite. That shell disables address space randomisation, which restore needs,
+so run the tests there as `setarch x86_64 ctest --test-dir build`. See
+`NIX-DEVELOPMENT.md`.
 
 ## Usage
 
@@ -101,6 +111,10 @@ arctl visualize --results experiments/raw
 arctl visualize --image run.arimg --profile p.db --policy cost
 arctl visualize --trace faults.tsv
 ```
+
+This is the common path, not every option. `arctl help` lists the full surface,
+including `checkpoint --env` and `--allow-unsupported-state`, `restore
+--cold-cache`/`--warm-cache` and `--no-learn`, and `profile reset|export`.
 
 `arctl visualize` only reads what other commands left behind, so it never
 perturbs a measurement and it builds in every configuration. `--results` draws
@@ -137,5 +151,9 @@ make -C experiments/phase0 check
 
 - Linux x86-64, kernel with `userfaultfd` (`UFFD_USER_MODE_ONLY` is used — works
   even with `vm.unprivileged_userfaultfd=0`).
-- gcc/clang with C++20, CMake ≥ 3.20, SQLite3 (Phase 4+).
-- Optional (recommended for the restorer, Phase 2): `criu` / `compel`.
+- gcc/clang with C++20, CMake ≥ 3.20.
+- Optional: `criu` / `compel` (4.1 or 4.2). Without it there is no `restore`.
+- Optional: SQLite3. Without it there is no `--profile`, so no `prefetch` or
+  `cost` policy and no `profile` command.
+- Address space randomisation enabled for `restore` (the default on most
+  systems; see `NIX-DEVELOPMENT.md` for the case where it is not).
