@@ -38,6 +38,11 @@ std::unique_ptr<RestoreTarget> make_target_for(const std::vector<image::MappingR
 // before deferring any page in that range; see the implementation for why.
 void disable_huge_pages(RestoreTarget& target, std::uint64_t start, std::uint64_t end);
 
+// Let the kernel back [start, end) with transparent huge pages, so eager
+// writes into it can allocate 2 MiB at a time. Only for ranges that hold no
+// deferred page; disable_huge_pages() must run after it on any that do.
+void enable_huge_pages(RestoreTarget& target, std::uint64_t start, std::uint64_t end);
+
 // Tear down the stub's address space and rebuild the image's in its place.
 //
 // Every non-kernel mapping is recreated, including no-access guard regions, so

@@ -95,6 +95,20 @@ void disable_huge_pages(RestoreTarget& target, std::uint64_t start, std::uint64_
                               std::strerror(static_cast<int>(-rc)));
 }
 
+void enable_huge_pages(RestoreTarget& target, std::uint64_t start, std::uint64_t end) {
+    // Eager writes into fresh target memory, so it pays for every page the
+    // kernel allocates. With THP set to [madvise] those are 4 KiB pages unless
+    // the range opts in, which halves eager's speed (64 MiB in ~49 ms against
+    // ~22 ms with huge pages). Opting in makes eager independent
+    // of the system-wide mode. It is a hint: a kernel that cannot supply a
+    // huge page falls back to 4 KiB, so failure costs speed, never correctness.
+    const long rc = target.syscall(__NR_madvise, start, end - start,
+                                   static_cast<std::uint64_t>(MADV_HUGEPAGE));
+    if (rc != 0 && rc != -EINVAL)  // EINVAL: kernel built without THP
+        throw CheckpointError("restore: madvise(MADV_HUGEPAGE) on " + hex(start) + ": " +
+                              std::strerror(static_cast<int>(-rc)));
+}
+
 LayoutResult rebuild_address_space(RestoreTarget& target, const image::ImageReader& image) {
     const auto mappings = image.mappings();
     if (collides_with_tls(target, mappings))

@@ -11,6 +11,7 @@
 #include "adaptive_restore/image/image_reader.hpp"
 #include "adaptive_restore/common/version.hpp"
 #include "adaptive_restore/paging/eager_provider.hpp"
+#include "adaptive_restore/paging/lazy_ranges.hpp"
 #include "adaptive_restore/policy/plan.hpp"
 #ifdef AR_HAVE_SQLITE
 #include "adaptive_restore/profile/profile_store.hpp"
@@ -72,8 +73,23 @@ RestoreSummary restore_image(const image::ImageReader& image, const RestoreOptio
     // mapping. `cost` is the only policy that mixes both in one mapping, so a
     // mapping-wide sweep hurt precisely the policy under test: it went from
     // beating prefetch by 16% to losing to it by 15%.
+    //
+    // Before that, opt every private anonymous mapping holding an eager region
+    // into THP. Both calls set per-range advice and the later one wins, so a
+    // deferred span still ends up with THP off; only eager-only spans keep it.
     {
         constexpr std::uint64_t kTHP = 2u * 1024u * 1024u;
+        std::vector<std::uint32_t> eager_mappings;
+        for (std::size_t i = 0; i < regions.size(); ++i)
+            if (actions[i] == paging::RestoreAction::Eager)
+                eager_mappings.push_back(regions[i].mapping_id);
+        for (const auto& lr : paging::lazy_ranges(image)) {
+            if (lr.end - lr.start < kTHP) continue;  // no aligned 2 MiB window fits
+            if (std::find(eager_mappings.begin(), eager_mappings.end(), lr.mapping_id) !=
+                eager_mappings.end())
+                enable_huge_pages(*target, lr.start, lr.end);
+        }
+
         std::vector<std::pair<std::uint64_t, std::uint64_t>> spans;
         for (std::size_t i = 0; i < regions.size(); ++i) {
             if (actions[i] == paging::RestoreAction::Eager) continue;
