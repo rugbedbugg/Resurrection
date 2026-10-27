@@ -111,7 +111,7 @@ RestoreTarget::RestoreTarget(std::uint64_t reserve_addr, std::size_t reserve_byt
         // The privileged compel_prepare() sets up a netlink socket in the
         // target's netns and fails EPERM unprivileged; noctx skips that and
         // leaves the infect_ctx to us. (spike report, trap 2.)
-        ctl_ = compel_prepare_noctx(pid_, false);
+        ctl_ = compel_prepare_noctx_compat(pid_);
         if (!ctl_) throw CheckpointError("restore: compel_prepare_noctx failed");
 
         infect_ctx* ictx = compel_infect_ctx(ctl_);

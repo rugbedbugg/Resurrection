@@ -42,6 +42,21 @@ option(AR_FORCE_NO_SQLITE "Pretend SQLite is absent (exercises the no-profile bu
 if(NOT AR_FORCE_NO_COMPEL)
     find_package(Compel)
 endif()
+
+# criu 4.2 gave compel_prepare() and compel_prepare_noctx() a handle_rseq
+# argument. Ask the header which shape it has rather than pinning a criu
+# version, so the restorer builds against 4.1 and 4.2 alike.
+if(Compel_FOUND)
+    include(CheckCXXSourceCompiles)
+    set(CMAKE_REQUIRED_INCLUDES "${COMPEL_INCLUDE_DIR}")
+    set(CMAKE_REQUIRED_LIBRARIES "${COMPEL_LIBRARY}")
+    check_cxx_source_compiles("
+#include <compel/infect.h>
+int main() { (void)compel_prepare_noctx(0, false); return 0; }
+" AR_COMPEL_PREPARE_TAKES_RSEQ)
+    unset(CMAKE_REQUIRED_INCLUDES)
+    unset(CMAKE_REQUIRED_LIBRARIES)
+endif()
 if(NOT AR_FORCE_NO_SQLITE)
     find_package(SQLite3Opt)
 endif()
@@ -93,6 +108,10 @@ target_include_directories(adaptive_restore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/i
 if(Compel_FOUND)
     target_link_libraries(adaptive_restore PUBLIC Compel::Compel)
     target_compile_definitions(adaptive_restore PUBLIC AR_HAVE_COMPEL)
+    if(AR_COMPEL_PREPARE_TAKES_RSEQ)
+        target_compile_definitions(adaptive_restore PUBLIC
+            AR_COMPEL_PREPARE_TAKES_RSEQ)
+    endif()
 endif()
 if(SQLite3Opt_FOUND)
     target_link_libraries(adaptive_restore PUBLIC SQLite::SQLite3)
