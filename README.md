@@ -25,25 +25,32 @@ a given workload a policy ever falls -- is:
 
 | policy | worst-case regret |
 |---|---|
-| lazy | +235% |
-| eager | +102% |
-| prefetch | +88% |
-| **cost** | **+9.9%** |
+| lazy | +144% |
+| eager | +103% |
+| prefetch | +58% |
+| **cost** | **+1.9%** |
 
-Every fixed policy is catastrophically wrong on at least one workload; the
-adaptive one is never more than 10% off the best, and that 10% sits inside the
-run-to-run spread. On `mixed_regions`, the workload with regions of genuinely
-different access behaviour, `--policy cost` beat every fixed policy on 9 of 9
-repetitions with no overlap in range, and it captures ~100% of the gain an
-oracle with perfect knowledge could achieve. Where a fixed policy is already
-optimal it matches that policy rather than losing to it, and when its recorded
-history is wrong it degrades in latency, never in correctness.
+Every fixed policy is badly wrong on at least one workload; the adaptive one is
+never more than 2% off the best, inside the run-to-run spread. On
+`mixed_regions`, the workload with regions of genuinely different access
+behaviour, `--policy cost` beat every fixed policy on 9 of 9 repetitions cold
+and 8 of 9 warm, by 10-17% over the best fixed policy. Where a fixed policy is
+already optimal it matches that policy rather than losing to it, and when its
+recorded history is wrong it degrades in latency, never in correctness.
 
-These numbers were measured on one development machine, and the cost model's
-constants (`src/policy/calibration.cpp`) were calibrated on that same machine.
+These numbers were measured on one machine (kernel 7.2.10, ext4 on NVMe), and
+the cost model's constants (`src/policy/calibration.cpp`) were calibrated on it.
 Other hardware can rank the policies differently. To measure your own machine,
 run `arctl benchmark` (below) and the cost-model gate in report-only mode (see
 `NIX-DEVELOPMENT.md`).
+
+The ranking also depends on transparent huge pages. Eager writes into fresh
+memory, and with 4 KiB pages it runs at half speed. With eager that slow, plain
+prefetch wins everywhere and there is nothing left for a per-region choice to
+win. The restorer therefore opts eager-only mappings into THP with
+`MADV_HUGEPAGE`, so the result does not depend on the system-wide THP mode.
+Spans that hold a deferred page keep THP off, because a huge page there would
+make pages resident that the restore expects to be missing.
 
 Restore needs `criu`/`compel` at build time; checkpoint and inspect do not, and
 a build without compel is supported (it simply has no `restore`).

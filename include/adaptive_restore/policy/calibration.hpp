@@ -20,7 +20,7 @@ struct Calibration {
     // affected spans, and running a page server for the target's lifetime.
     // §12 has no term for this, which lets a controller defer two regions out
     // of 283 and pay the whole setup for a saving of nothing. Measured at
-    // ~8.4 ms on this machine.
+    // ~10.3 ms on this machine.
     double deferral_setup_s = 0;
 
     // Kept for reporting: the image read is a real cost, just a policy-neutral

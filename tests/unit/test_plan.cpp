@@ -98,7 +98,10 @@ int main() {
 
     // --- history turns a sparse region into a deferred one -------------------
     {
-        auto bytes = build(4096, 64);   // 16 MiB of heap, worth deferring
+        // 64 MiB of heap, the size of the benchmark workloads. Big enough that
+        // eager's transfer clearly exceeds the fixed cost of deferring at all.
+        // With eager writing into huge pages, 16 MiB is not.
+        auto bytes = build(16384, 64);
         auto image = ImageReader::from_bytes(bytes);
 
         const auto cold = plan_restore(image, {}, RestorePolicy::Cost, false);

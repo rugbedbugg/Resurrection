@@ -26,12 +26,15 @@ int main() {
     assert(c.cost_lazy(0) == 2e-6);
     assert(c.cost_eager(kDefaultRegionBytes) > c.cost_lazy(0));
 
-    // The measured defaults must reflect that the two transfer paths differ:
+    // The measured defaults must price each transfer path on its own figure:
     // pricing prefetch with read bandwidth is what made the controller choose
-    // it and then lose on wall time.
+    // it and then lose on wall time. Which path is faster per byte is a
+    // property of the machine (it flips with the THP mode), not an invariant.
     const auto m = Calibration::defaults_cold();
-    assert(m.writev_bandwidth_bps > m.uffd_copy_bandwidth_bps &&
-           "process_vm_writev is measurably faster per byte than UFFDIO_COPY");
+    assert(m.writev_bandwidth_bps > 0 && m.uffd_copy_bandwidth_bps > 0);
+    assert(m.writev_bandwidth_bps != m.sequential_bandwidth_bps &&
+           m.uffd_copy_bandwidth_bps != m.sequential_bandwidth_bps &&
+           "neither transfer path may be priced with read bandwidth");
     assert(m.register_cost_s > 0);
 
     // --- the crossover must sit inside a region, not outside it ------------

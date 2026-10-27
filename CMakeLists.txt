@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(adaptive_restore
-    VERSION 0.5.2
+    VERSION 0.5.3
     DESCRIPTION "Adaptive region-aware process restoration for Linux"
     LANGUAGES C CXX)
 

@@ -60,8 +60,13 @@ int main() {
     assert(plan_cost(image, hist, all_lazy, k, 0.0) > bound.seconds);
 
     // A plan that matches the oracle's per-region choice must equal the bound.
-    // Dense -> eager, single-page -> prefetch, untouched -> lazy.
-    const std::vector<RestoreAction> smart{RestoreAction::Eager, RestoreAction::StaticPrefetch,
+    // Single-page -> prefetch, untouched -> lazy. Dense goes to whichever
+    // transfer path is cheaper per byte here, which depends on the machine.
+    const std::uint64_t dense_bytes = 8 * 4096;
+    const auto dense = k.cost_eager(dense_bytes) <= k.cost_prefetch(dense_bytes, 0, 0, 0.0)
+                           ? RestoreAction::Eager
+                           : RestoreAction::StaticPrefetch;
+    const std::vector<RestoreAction> smart{dense, RestoreAction::StaticPrefetch,
                                            RestoreAction::Lazy};
     const double smart_cost = plan_cost(image, hist, smart, k, 0.0);
     assert(std::fabs(smart_cost - bound.seconds) < 1e-9 &&

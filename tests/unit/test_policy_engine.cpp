@@ -75,7 +75,7 @@ int main() {
     }
 
     // --- the crossover sits where the measured costs put it ----------------
-    // C_eager for a 256 KiB region is ~166us at 1505 MiB/s; a fault is ~26us.
+    // C_eager for a 256 KiB region is ~101us at 2480 MiB/s; a fault is ~15us.
     // So lazy should win below roughly 6 of 64 pages and lose above it.
     {
         assert(engine.choose(region(0.06f, 0, 10), cold).action == RestoreAction::Lazy);

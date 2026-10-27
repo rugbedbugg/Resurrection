@@ -30,17 +30,22 @@ constexpr std::size_t kProbeBytes = 64u << 20;
 
 }  // namespace
 
-// Measured on this machine; see docs/phase4-calibration-report.md.
-//   process_vm_writev  1505 MiB/s      UFFDIO_COPY  549 MiB/s
-//   mean fault         26.2 us         UFFDIO_REGISTER  1.72 us/region
-// The two transfer paths differ by 2.74x, which is why pricing prefetch with
-// read bandwidth made the controller choose it and lose.
+// Measured on this machine (kernel 7.2.10, ext4/NVMe, THP mode "madvise").
+//   process_vm_writev  2480 MiB/s      UFFDIO_COPY  2000 MiB/s
+//   mean fault         15.4 us         UFFDIO_REGISTER  0.90 us/region
+//   deferral setup     10.3 ms
+// Both bandwidths are taken from real restores of the 64 MiB dense_scan, not
+// from a probe: eager writes into fresh target memory and pays for every page
+// allocation, which a probe that pre-faults its destination does not see.
+// Eager's figure assumes the restorer's MADV_HUGEPAGE opt-in on eager-only
+// mappings (enable_huge_pages()). Without huge pages the same write runs at
+// ~1300 MiB/s and becomes the slower path, so recalibrate if that changes.
 Calibration Calibration::defaults_warm() {
-    return {1505.0 * kMiB, 549.0 * kMiB, 26.2e-6, 1.72e-6, 8.4e-3, 7060.0 * kMiB};
+    return {2480.0 * kMiB, 2000.0 * kMiB, 15.4e-6, 0.90e-6, 10.3e-3, 11840.0 * kMiB};
 }
 
 Calibration Calibration::defaults_cold() {
-    return {1505.0 * kMiB, 549.0 * kMiB, 26.2e-6, 1.72e-6, 8.4e-3, 1141.0 * kMiB};
+    return {2480.0 * kMiB, 2000.0 * kMiB, 15.4e-6, 0.90e-6, 10.3e-3, 1290.0 * kMiB};
 }
 
 Calibration Calibration::measure(const char* image_dir) {
