@@ -150,7 +150,9 @@ int main() {
                         kCode, kCode + 4096, 0, 0, 0, ""});
         w2.add_page({kCode, 0, 0, PageEncoding::Zero, 0}, {});
         w2.add_region({0, 0, kCode, kCode + 4096, 0, 1});
-        w2.add_fd({3, O_RDONLY, 0, 0xdead, 0xbeef, "/usr/lib/libc.so.6"});
+        // A real file with the wrong identity, so the check that rejects a
+        // moved backing file is what trips, not a missing path.
+        w2.add_fd({3, O_RDONLY, 0, 0xdead, 0xbeef, "/proc/self/exe"});
         auto b2 = w2.serialize_to_bytes();
         auto img2 = ImageReader::from_bytes(b2);
         auto t2 = make_target_for(img2.mappings(), kReserve, kReserveBytes);

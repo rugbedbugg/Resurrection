@@ -5,6 +5,7 @@
 
 #include <cassert>
 #include <cstdio>
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -26,6 +27,31 @@ static constexpr std::size_t kReserveBytes = 4 * 4096;
 static constexpr std::uint64_t kAnon = 0x100000000000ULL;
 static constexpr std::uint64_t kGuard = 0x100000010000ULL;
 
+// The file-mapping checks need a real file. Reach for whichever libc this test
+// binary links against instead of assuming a distro path: NixOS keeps it under
+// /nix/store.
+static std::string libc_path() {
+    std::FILE* f = std::fopen("/proc/self/maps", "r");
+    assert(f != nullptr);
+    char line[4096];
+    std::string path;
+    while (std::fgets(line, sizeof line, f) != nullptr) {
+        const char* at = std::strstr(line, "libc.so.6");
+        if (at == nullptr) continue;
+        // The path starts after the field that separates it from the inode and
+        // ends at the first blank, which also drops a " (deleted)" suffix.
+        const char* start = at;
+        while (start > line && start[-1] != ' ') --start;
+        const char* end = start;
+        while (*end != '\0' && *end != '\n' && *end != ' ') ++end;
+        path.assign(start, static_cast<std::size_t>(end - start));
+        break;
+    }
+    std::fclose(f);
+    assert(!path.empty() && "this test binary must link libc");
+    return path;
+}
+
 static std::vector<std::byte> build_image(bool with_file_mapping) {
     ImageWriter w;
     ImageHeaderInfo h{};
@@ -45,12 +71,13 @@ static std::vector<std::byte> build_image(bool with_file_mapping) {
 
     if (with_file_mapping) {
         // Map this test binary itself, so dev/ino validation has a real target.
+        const std::string libc = libc_path();
         struct stat st {};
-        assert(::stat("/usr/lib/libc.so.6", &st) == 0);
+        assert(::stat(libc.c_str(), &st) == 0);
         w.add_mapping({0, MappingFlag::Read | MappingFlag::FileBacked | MappingFlag::ContentsSaved,
                        0x100000020000ULL, 0x100000024000ULL, 0,
                        static_cast<std::uint64_t>(st.st_dev),
-                       static_cast<std::uint64_t>(st.st_ino), "/usr/lib/libc.so.6"});
+                       static_cast<std::uint64_t>(st.st_ino), libc});
     }
     return w.serialize_to_bytes();
 }
@@ -84,7 +111,7 @@ int main() {
 
         // The file mapping is genuinely file-backed, not faked with anonymous memory.
         const auto* filemap = find(0x100000020000ULL);
-        assert(filemap && filemap->path == "/usr/lib/libc.so.6");
+        assert(filemap && filemap->path == libc_path());
         assert(filemap->kind == checkpoint::MapKind::FileBacked);
 
         // The kernel mapping was not recreated at the image's address.
@@ -105,7 +132,7 @@ int main() {
         w.set_registers(RegisterRecord{});
         // Deliberately wrong dev/ino for a file that does exist.
         w.add_mapping({0, MappingFlag::Read | MappingFlag::FileBacked | MappingFlag::ContentsSaved,
-                       kAnon, kAnon + 4096, 0, 0xdead, 0xbeef, "/usr/lib/libc.so.6"});
+                       kAnon, kAnon + 4096, 0, 0xdead, 0xbeef, libc_path()});
         auto bytes = w.serialize_to_bytes();
         auto image = ImageReader::from_bytes(bytes);
         auto target = make_target_for(image.mappings(), kReserve, kReserveBytes);

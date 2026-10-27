@@ -118,7 +118,9 @@ int main() {
     {
         MappingRecord moved = anon;
         moved.flags |= MappingFlag::FileBacked;
-        moved.path = "/usr/lib/libc.so.6";
+        // A real file with the wrong identity, so the check that rejects a
+        // moved backing file is what trips, not a missing path.
+        moved.path = "/proc/self/exe";
         moved.dev = 0xdead;
         moved.ino = 0xbeef;
         assert(fails_with(image_with(moved, PageEncoding::Raw, page),

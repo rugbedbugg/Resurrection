@@ -26,13 +26,38 @@ static constexpr std::size_t kReserveBytes = 4 * 4096;
 static constexpr std::uint64_t kAnon = 0x100000000000ULL;   // 4 pages, rw
 static constexpr std::uint64_t kRo = 0x100000010000ULL;     // 1 page, read-only
 static constexpr std::uint64_t kFile = 0x100000020000ULL;   // 1 page, file-backed
-static const char* kLibc = "/usr/lib/libc.so.6";
+
+// The file-mapping checks need a real file. Reach for whichever libc this test
+// binary links against instead of assuming a distro path: NixOS keeps it under
+// /nix/store.
+static std::string libc_path() {
+    std::FILE* f = std::fopen("/proc/self/maps", "r");
+    assert(f != nullptr);
+    char line[4096];
+    std::string path;
+    while (std::fgets(line, sizeof line, f) != nullptr) {
+        const char* at = std::strstr(line, "libc.so.6");
+        if (at == nullptr) continue;
+        // The path starts after the field that separates it from the inode and
+        // ends at the first blank, which also drops a " (deleted)" suffix.
+        const char* start = at;
+        while (start > line && start[-1] != ' ') --start;
+        const char* end = start;
+        while (*end != '\0' && *end != '\n' && *end != ' ') ++end;
+        path.assign(start, static_cast<std::size_t>(end - start));
+        break;
+    }
+    std::fclose(f);
+    assert(!path.empty() && "this test binary must link libc");
+    return path;
+}
 
 static std::byte pat(std::size_t i) { return static_cast<std::byte>((i * 31 + 7) & 0xff); }
 
 int main() {
+    const std::string libc = libc_path();
     struct stat libc_st {};
-    assert(::stat(kLibc, &libc_st) == 0);
+    assert(::stat(libc.c_str(), &libc_st) == 0);
 
     ImageWriter w;
     ImageHeaderInfo h{};
@@ -47,7 +72,7 @@ int main() {
                    kRo, kRo + 4096, 0, 0, 0, ""});
     w.add_mapping({0, MappingFlag::Read | MappingFlag::FileBacked | MappingFlag::ContentsSaved,
                    kFile, kFile + 4096, 0, static_cast<std::uint64_t>(libc_st.st_dev),
-                   static_cast<std::uint64_t>(libc_st.st_ino), kLibc});
+                   static_cast<std::uint64_t>(libc_st.st_ino), libc});
 
     // Anonymous: two pattern pages, then a zero page, then another pattern page.
     // The zero page sits between them, so coalescing must break around it.
