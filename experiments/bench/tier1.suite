@@ -1,9 +1,13 @@
 # Tier 1 benchmark suite (design-draft-v2 §21).
 #
+# Relative paths resolve against the working directory, so run this from the
+# repository root with a configured build/.
+#
 # image_dir must be real storage: on tmpfs the image is read from RAM and
 # posix_fadvise cannot evict it, so every cold-cache figure would be fiction.
 # arctl refuses a tmpfs image_dir rather than producing numbers that look fine.
-image_dir = /home/rugbedbugg/.cache/arcalib
+# It is created if missing; experiments/raw/ is ignored by git.
+image_dir = experiments/raw/images
 
 policies = eager, lazy, prefetch, cost
 caches = cold, warm

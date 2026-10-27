@@ -78,6 +78,13 @@ Suite Suite::parse(const std::filesystem::path& file) {
     if (s.image_dir.empty())
         throw CheckpointError("benchmark: " + file.string() +
                               " must set image_dir, and it must be real storage");
+    // Created here, before the tmpfs check: statfs on a path that does not
+    // exist fails, and a failed check reads as "not tmpfs".
+    std::error_code ec;
+    std::filesystem::create_directories(s.image_dir, ec);
+    if (ec || !std::filesystem::is_directory(s.image_dir))
+        throw CheckpointError("benchmark: cannot create image_dir " + s.image_dir.string() +
+                              ": " + (ec ? ec.message() : "not a directory"));
     if (is_tmpfs(s.image_dir))
         throw CheckpointError(
             "benchmark: image_dir " + s.image_dir.string() +

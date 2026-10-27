@@ -123,6 +123,10 @@ This is the common path, not every option. `arctl help` lists the full surface,
 including `checkpoint --env` and `--allow-unsupported-state`, `restore
 --cold-cache`/`--warm-cache` and `--no-learn`, and `profile reset|export`.
 
+Run `arctl benchmark` from the repository root: the suite's paths are relative
+to the working directory and expect a configured `build/`. Its images go to
+`experiments/raw/images`, which is created if missing and must not be on tmpfs.
+
 `arctl visualize` only reads what other commands left behind, so it never
 perturbs a measurement and it builds in every configuration. `--results` draws
 median resume latency per policy per workload; `--image` draws the region map of

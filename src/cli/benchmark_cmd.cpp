@@ -92,8 +92,10 @@ int cmd_benchmark(std::span<const std::string_view> args) {
             std::filesystem::remove(prof);
 
             std::cout << "== " << name << " ==" << std::endl;
-            if (run(self + " checkpoint --output " + img + " -- " + wl + " >/dev/null 2>&1") != 0)
-                return fail("checkpoint failed for " + wl);
+            const std::string ck_log = base + ".checkpoint.log";
+            if (run(self + " checkpoint --output " + img + " -- " + wl + " > " + ck_log +
+                    " 2>&1") != 0)
+                return fail("checkpoint failed for " + wl + "; its output is in " + ck_log);
             const std::string baseline = slurp(img + ".stdout");
 
             for (int t = 0; t < suite.teach_reps; ++t)
@@ -151,6 +153,7 @@ int cmd_benchmark(std::span<const std::string_view> args) {
             std::filesystem::remove(img);
             std::filesystem::remove(img + ".stdout");
             std::filesystem::remove(img + ".stderr");
+            std::filesystem::remove(ck_log);
         }
         raw.close();
 
