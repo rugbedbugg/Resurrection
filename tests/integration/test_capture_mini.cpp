@@ -1,3 +1,4 @@
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -39,6 +40,14 @@ int main() {
 
     auto ir = ImageReader::open(img);
     ir.verify();
+
+    // An image holds process memory, and the sidecars hold its output.
+    // Nobody but the owner may read any of them, whatever the umask.
+    for (const auto& path : {img, img + ".stdout", img + ".stderr"}) {
+        struct stat st {};
+        assert(::stat(path.c_str(), &st) == 0);
+        assert((st.st_mode & 077) == 0 && "checkpoint output must be owner-only");
+    }
 
     const auto regs = ir.registers();
     const auto maps = ir.mappings();

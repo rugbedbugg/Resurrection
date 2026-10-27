@@ -1,5 +1,6 @@
 #include <fcntl.h>
 #include <sys/ptrace.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -27,8 +28,11 @@ int fail(const std::string& msg) {
 // Redirect the target's stdout/stderr into files beside the image, so its
 // output is captured and its fd table holds regular files rather than whatever
 // terminal or pipe arctl was launched with.
+// Owner-only, like the image: the target's output is as private as its memory.
 int open_stream(const std::string& path) {
-    return ::open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    const int fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0600);
+    if (fd >= 0) ::fchmod(fd, 0600);  // O_TRUNC on a leftover file keeps its old mode
+    return fd;
 }
 
 }  // namespace

@@ -1,6 +1,7 @@
 #include "adaptive_restore/image/image_writer.hpp"
 
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <cerrno>
@@ -273,8 +274,11 @@ void ImageWriter::finish(const std::filesystem::path& out) {
     std::filesystem::path tmp = out;
     tmp += ".tmp";
 
-    const int fd = ::open(tmp.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (fd < 0)
+    // An image is a copy of process memory and can hold anything the process
+    // did, credentials included, so only its owner may read it. fchmod
+    // as well as the open mode: O_TRUNC on a leftover file keeps its old mode.
+    const int fd = ::open(tmp.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0600);
+    if (fd < 0 || ::fchmod(fd, 0600) != 0)
         throw CheckpointError("ImageWriter::finish: open(" + tmp.string() +
                               "): " + std::strerror(errno));
 

@@ -127,6 +127,9 @@ Run `arctl benchmark` from the repository root: the suite's paths are relative
 to the working directory and expect a configured `build/`. Its images go to
 `experiments/raw/images`, which is created if missing and must not be on tmpfs.
 
+Checkpoint images and their `.stdout`/`.stderr` files are created owner-only
+(`0600`), because an image is a copy of the process's memory.
+
 `arctl visualize` only reads what other commands left behind, so it never
 perturbs a measurement and it builds in every configuration. `--results` draws
 median resume latency per policy per workload; `--image` draws the region map of
