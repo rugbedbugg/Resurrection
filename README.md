@@ -171,3 +171,6 @@ make -C experiments/phase0 check
   `cost` policy and no `profile` command.
 - Address space randomisation enabled for `restore` (the default on most
   systems; see `NIX-DEVELOPMENT.md` for the case where it is not).
+- No seccomp filter on `arctl` for `restore`. compel cannot seize a filtered
+  task without `CAP_SYS_ADMIN`, so restore fails at its first step inside a
+  container running a seccomp profile, such as Docker's default.
