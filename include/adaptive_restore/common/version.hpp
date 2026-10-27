@@ -12,7 +12,7 @@ namespace adaptive_restore {
 // One source of truth. A split major/minor/patch triple used to sit here too and
 // had drifted three releases out of date without anything noticing, because
 // nothing consumed it and CMake only validates the string.
-inline constexpr const char* kProjectVersion = "0.5.3";
+inline constexpr const char* kProjectVersion = "0.5.4";
 
 // Checkpoint image: 8-byte magic + format version (§7.2).
 inline constexpr unsigned char kImageMagic[8] = {'A', 'R', 'I', 'M', 'G', '\0', '\0', '\1'};
