@@ -1,4 +1,4 @@
-// The visualizer is a consumer (§19): it must render whatever the rest of the
+// The visualizer is a consumer: it must render whatever the rest of the
 // system produced without ever touching a process. These tests check that the
 // renderers stay honest about the numbers they are given, since a chart that
 // quietly misreports is worse than no chart.

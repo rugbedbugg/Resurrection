@@ -1,4 +1,4 @@
-/* Dense scan (design-draft-v2 §21): touches nearly every page after resuming.
+/* Dense scan: touches nearly every page after resuming.
  *
  * The degenerate case where eager is already the right answer everywhere. There
  * is nothing for a per-region controller to decide, so the property under test

@@ -4,7 +4,7 @@
 
 namespace adaptive_restore::policy {
 
-// The control plane (§6.2). Tier 1 has one implementation; Tier 2 adds bandit
+// The control plane. Tier 1 has one implementation; Tier 2 adds bandit
 // and tiny-neural engines behind this same interface.
 class PolicyEngine {
 public:
@@ -14,7 +14,7 @@ public:
                         const RegionOutcome& outcome) = 0;
 };
 
-// The Tier 1 controller (§12): three analytical costs, take the argmin.
+// The Tier 1 controller: three analytical costs, take the argmin.
 // Deterministic and explainable by construction; it learns nothing at decision
 // time, only reads what the profiler recorded earlier.
 class CostModelPolicyEngine : public PolicyEngine {

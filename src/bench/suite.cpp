@@ -89,8 +89,8 @@ Suite Suite::parse(const std::filesystem::path& file) {
         throw CheckpointError(
             "benchmark: image_dir " + s.image_dir.string() +
             " is on tmpfs. Images there are read from RAM and posix_fadvise cannot "
-            "evict them, so every cold-cache figure would be fiction (see §26 and "
-            "docs/limitations.md). Point it at real storage.");
+            "evict them, so every cold-cache figure would be fiction. Point it at "
+            "real storage.");
     return s;
 }
 

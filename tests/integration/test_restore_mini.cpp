@@ -1,6 +1,5 @@
 // Phase 2 exit gate: a checkpointed deterministic program resumes from the
-// saved instruction and produces output identical to an uninterrupted run
-// (design-draft-v2 §20 Phase 2, §25.2, §25.3).
+// saved instruction and produces output identical to an uninterrupted run.
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -46,7 +45,7 @@ int main() {
     // The target ran to completion during checkpoint, so this is the baseline.
     assert(slurp(out) == kBaseline && "the checkpointed run must match the baseline");
 
-    // --- restore, twice, from the same image (§25.2 repeated restore) -------
+    // --- restore, twice, from the same image (repeated restore) -------------
     for (int attempt = 0; attempt < 2; ++attempt) {
         // Clear the target's stdout first, or a stale value from the previous
         // run would make this pass without the restore writing anything.

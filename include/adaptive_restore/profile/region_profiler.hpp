@@ -12,7 +12,7 @@ class ImageReader;
 
 namespace adaptive_restore::profile {
 
-// What one restore actually witnessed about one region (§10.1).
+// What one restore actually witnessed about one region.
 //
 // Two masks, deliberately not one. `touched` says a page faulted, which is
 // positive evidence that the workload wanted it. `observable` says the page

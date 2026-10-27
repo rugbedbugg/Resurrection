@@ -1,4 +1,4 @@
-// Failure tests (design-draft-v2 §25.4): every one of these must fail
+// Failure tests: every one of these must fail
 // explicitly, and none may leave a partially-restored process alive.
 #include <sys/mman.h>
 #include <sys/wait.h>

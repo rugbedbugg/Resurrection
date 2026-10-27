@@ -19,10 +19,11 @@ struct Row {
 
 // A benchmark suite.
 //
-// §18's CLI draft says `--suite suite.yaml`, but a YAML parser is a third-party
-// dependency and this project's constraint is zero of those. A matrix this small
-// does not need YAML: the format is `key = value` lines plus `run <path>`
-// entries, which parses in thirty lines and reads without a manual.
+// The original CLI design said `--suite suite.yaml`, but a YAML parser is a
+// third-party dependency and this project's constraint is zero of those. A
+// matrix this small does not need YAML: the format is `key = value` lines plus
+// `run <path>` entries, which parses in thirty lines and reads without a
+// manual.
 struct Suite {
     std::vector<std::string> workloads;
     std::vector<std::string> policies{"eager", "lazy", "prefetch", "cost"};
@@ -36,7 +37,7 @@ struct Suite {
 
 // Where the image lives decides whether cold-cache numbers mean anything: on
 // tmpfs there is no backing store, posix_fadvise cannot evict, and every "cold"
-// figure is fiction (docs/limitations.md).
+// figure is fiction.
 bool is_tmpfs(const std::filesystem::path& dir);
 
 }  // namespace adaptive_restore::bench

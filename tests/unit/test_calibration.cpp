@@ -9,7 +9,7 @@ using namespace adaptive_restore;
 using namespace adaptive_restore::policy;
 
 int main() {
-    // --- the cost formulas are §12, with the bandwidth each path achieves ---
+    // --- the cost formulas, with the bandwidth each path achieves -----------
     Calibration c;
     c.writev_bandwidth_bps = 1e9;      // 1 GB/s, eager's process_vm_writev
     c.uffd_copy_bandwidth_bps = 5e8;   // 0.5 GB/s, prefetch's UFFDIO_COPY

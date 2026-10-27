@@ -5,7 +5,7 @@
 // kProjectVersion must match project(VERSION ...) in CMakeLists.txt; configure
 // hard-errors if they drift apart.
 // The image format version is independent of the project version: bump it only
-// when the checkpoint layout (docs/design-draft-v2.md §7) changes incompatibly.
+// when the checkpoint layout changes incompatibly.
 
 namespace adaptive_restore {
 
@@ -14,17 +14,17 @@ namespace adaptive_restore {
 // nothing consumed it and CMake only validates the string.
 inline constexpr const char* kProjectVersion = "0.5.4";
 
-// Checkpoint image: 8-byte magic + format version (§7.2).
+// Checkpoint image: 8-byte magic + format version.
 inline constexpr unsigned char kImageMagic[8] = {'A', 'R', 'I', 'M', 'G', '\0', '\0', '\1'};
 // v2 added PageEncoding::FromFile: pages identical to their backing file are
 // referenced rather than stored. v1 images are not readable by this build.
 inline constexpr int kImageFormatVersion = 2;
 
-// Region-layout + feature-schema versions travel in the profile key (§16.1).
+// Region-layout + feature-schema versions travel in the profile key.
 inline constexpr int kRegionLayoutVersion = 1;
 inline constexpr int kFeatureSchemaVersion = 1;
 
-// Fixed Tier 1 region size (§5.3, §27 "region granularity" mitigation).
+// Fixed Tier 1 region size. Tier 2 would sweep it.
 inline constexpr unsigned kDefaultRegionBytes = 256u * 1024u;
 
 }  // namespace adaptive_restore

@@ -17,13 +17,13 @@ struct PageIndexRecord;
 namespace adaptive_restore::policy {
 
 enum class RestorePolicy {
-    Eager,     // every page written before the target resumes (§9.3)
-    Lazy,      // anonymous regions registered and served on demand (§9.4)
-    Prefetch,  // load the recorded working set, fault for the rest (§9.5)
-    Cost,      // choose per region from the cost model (§12)
+    Eager,     // every page written before the target resumes
+    Lazy,      // anonymous regions registered and served on demand
+    Prefetch,  // load the recorded working set, fault for the rest
+    Cost,      // choose per region from the cost model
 };
 
-// Build the Tier 1 feature set (§10.1) for one region, from what the image says
+// Build the Tier 1 feature set for one region, from what the image says
 // and what the profile remembers. `h` may be null: no history for this region.
 RegionFeatures features_for(const image::RegionRecord& r,
                             const std::vector<image::MappingRecord>& mappings,

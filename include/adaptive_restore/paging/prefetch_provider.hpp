@@ -19,7 +19,7 @@ class ImageReader;
 
 namespace adaptive_restore::paging {
 
-// §9.5 asks for these explicitly: what the prediction got right, what it missed,
+// What the prediction got right, what it missed,
 // and what it loaded for nothing. The last two are precision and recall of the
 // recorded working set, and are what Phase 5 reports as waste and coverage.
 struct PrefetchStats {
@@ -60,10 +60,10 @@ struct HoldoutRecord {
 };
 
 // Loads the historically-touched subset of a region up front and leaves the
-// rest to fault (§9.5).
+// rest to fault.
 //
 // The whole region is registered regardless of what was prefetched, so a wrong
-// prediction costs latency and never correctness: §11.4's safety fallback. With
+// prediction costs latency and never correctness. With
 // no history a region degrades to pure lazy rather than failing, so a cold
 // profile is a slow first run, not a broken one.
 class PrefetchProvider : public PageProvider {

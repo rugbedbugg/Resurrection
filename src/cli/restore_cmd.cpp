@@ -171,7 +171,7 @@ int cmd_restore(std::span<const std::string_view> args) {
         }
 #endif
 
-        // §12 sells this controller on being deterministic and explainable, so
+        // This controller is meant to be deterministic and explainable, so
         // the decisions travel with their costs. A breakdown nobody can read
         // fails that claim on its own terms.
         if (s.deferral_declined)

@@ -39,7 +39,7 @@ struct RestoreOptions {
     // than an eager one that did exactly the same thing.
     std::vector<profile::RegionHistory> history;
     // Scratch area for compel. Kept far from any realistic process layout so it
-    // cannot collide with an image; see docs/phase2-spike-report.md.
+    // cannot collide with an image.
     std::uint64_t reserve_addr = 0x700000000000ULL;
     std::size_t reserve_bytes = 4 * 4096;
 };
@@ -62,7 +62,7 @@ struct RestoreSummary {
     std::vector<paging::RegionExecution> executions;
     std::uint64_t regions_eager = 0;
     std::uint64_t regions_lazy = 0;
-    std::uint64_t resume_latency_ns = 0;  // invocation to first resumed instruction (§22)
+    std::uint64_t resume_latency_ns = 0;  // invocation to first resumed instruction
     std::uint64_t pages_loaded_upfront = 0;  // written eagerly or prefetched, before resume
 
     // Under Lazy the target is running with pages still owed to it, so the

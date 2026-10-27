@@ -13,7 +13,7 @@ namespace adaptive_restore::paging {
 
 // Maps a faulting address to its page record and owning region.
 //
-// The page index is sorted by vaddr (§7.5), so this is a binary search. A
+// The page index is sorted by vaddr, so this is a binary search. A
 // linear scan would be O(pages) per fault and would dominate the very latency
 // Phase 4 is trying to measure.
 class PageLocator {

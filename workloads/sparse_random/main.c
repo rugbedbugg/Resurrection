@@ -1,4 +1,4 @@
-/* Sparse random (design-draft-v2 §21): allocates a large region, touches every
+/* Sparse random: allocates a large region, touches every
  * page before the checkpoint, then after resuming touches only a small random
  * subset of it.
  *

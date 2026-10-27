@@ -65,7 +65,7 @@ Userfault::Userfault(RestoreTarget& target)
     // The target keeps its own reference on purpose. If this page server dies,
     // that reference keeps the uffd alive so faults stall rather than silently
     // resolving to zero pages, and the death signal below turns the stall into
-    // a clean kill. (docs/phase3-spike-report.md, Q3.)
+    // a clean kill.
     ::uffdio_api api{};
     api.api = UFFD_API;
     if (::ioctl(fd_, UFFDIO_API, &api) != 0) {

@@ -11,7 +11,7 @@
 
 namespace adaptive_restore::profile {
 
-// What makes two restores "the same checkpoint" for learning purposes (§16.1).
+// What makes two restores "the same checkpoint" for learning purposes.
 //
 // The point of every field is that a mismatch must mean "no history", never
 // "wrong history": applying a profile learned from a different image, a
@@ -27,15 +27,15 @@ struct ProfileKey {
     bool operator==(const ProfileKey&) const = default;
 };
 
-// Tier 1 per-region record (§16.2), plus the recorded working set.
+// Tier 1 per-region record, plus the recorded working set.
 //
-// §16.2's field list carries only `fraction_accessed_avg`, but a fraction
-// cannot tell a prefetcher WHICH pages to load. §16 and §20 both state the
-// store exists to accumulate working sets across restores, so `touched_bitmap`
+// The designed field list carries only `fraction_accessed_avg`, but a fraction
+// cannot tell a prefetcher WHICH pages to load. The store exists to
+// accumulate working sets across restores, so `touched_bitmap`
 // fills in what the trimmed record omits: one bit per page of the region, set
 // if that page was demanded on the most recent observed restore.
 //
-// Most-recent rather than a union over history, matching REAP (§4): a union
+// Most-recent rather than a union over history, matching REAP: a union
 // over-prefetches once behaviour drifts, and drift handling is Tier 2.
 struct RegionHistory {
     std::uint32_t region_id = 0;
@@ -51,7 +51,7 @@ struct RegionHistory {
     }
 };
 
-// SQLite-backed, per §16.3: atomic updates, schema versioning, resettable,
+// SQLite-backed: atomic updates, schema versioning, resettable,
 // exportable. Page data never lives here; this is metadata only.
 class ProfileStore {
 public:

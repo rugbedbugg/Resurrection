@@ -1,11 +1,11 @@
 /* Phase 4 calibration spike.
  *
- * The Tier 1 cost model (§12) is arithmetic over three constants:
+ * The Tier 1 cost model is arithmetic over three constants:
  *   sequential_bandwidth, effective_bandwidth, mean_fault_cost
  * If they are unstable run to run, the model's inputs are noise and its
  * decisions are arbitrary. This measures all three, reports the SPREAD as well
- * as the median (§23 asks for medians), and checks that the unprivileged cache
- * drop actually evicts.
+ * as the median (results are reported as medians), and checks that the
+ * unprivileged cache drop actually evicts.
  *
  * mean_fault_cost is measured in the FAULTING thread, not the server: the model
  * needs the latency the target experiences, which includes the kernel round
@@ -129,7 +129,7 @@ static double fault_cost(int pages) {
 /* NB: it must NOT live on tmpfs. /tmp is tmpfs on this machine, so a probe file
  * there measures RAM bandwidth and posix_fadvise(DONTNEED) cannot evict it
  * (tmpfs pages have no backing store to drop to). Every "cold cache" number
- * taken there would be a fiction (§26). */
+ * taken there would be a fiction. */
 static char *make_probe_file(size_t bytes) {
     static char path[512];
     const char *dir = getenv("AR_CALIB_DIR");
@@ -169,7 +169,7 @@ int main(int argc, char **argv) {
 
         /* Does the unprivileged cache drop actually do anything? If warm and
          * cold are indistinguishable, every "cold cache" number in the
-         * benchmark would be a lie (§26). */
+         * benchmark would be a lie. */
         double warm[REPS], cold[REPS];
         for (int i = 0; i < REPS; i++) { warm[i] = read_bandwidth(img, 0); cold[i] = read_bandwidth(img, 1); }
         qsort(warm, REPS, sizeof(double), cmp_d);

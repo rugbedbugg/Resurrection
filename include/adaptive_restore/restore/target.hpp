@@ -13,7 +13,6 @@ namespace adaptive_restore::restore {
 // The stub deliberately does NOT ptrace(PTRACE_TRACEME): compel attaches with
 // PTRACE_SEIZE, which fails EPERM on a task that already has a tracer. So the
 // stub only signals readiness and idles; compel owns the whole attachment.
-// (docs/phase2-spike-report.md, trap 1.)
 class RestoreTarget {
 public:
     // Fork an idle stub with ASLR off and a sanitised fd table, then seize it.
@@ -37,7 +36,7 @@ public:
 
     // Base of the VMA holding the stub's TLS. That block is load-bearing for
     // compel and cannot be relocated, so an image mapping overlapping it makes
-    // this stub unusable. (spike report, trap 3.)
+    // this stub unusable.
     std::uint64_t tls_start() const { return tls_start_; }
     std::uint64_t tls_end() const { return tls_end_; }
 

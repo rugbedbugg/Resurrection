@@ -1,7 +1,7 @@
 // arctl -- command-line front end for adaptive-restore.
 //
-// Command surface follows docs/design-draft-v2.md §18, filled in phase by
-// phase (§20). All of Tier 1 is now implemented:
+// The command surface was filled in phase by
+// phase. All of Tier 1 is now implemented:
 //   Phase 1: checkpoint, inspect
 //   Phase 2: restore --policy eager
 //   Phase 3: restore --policy lazy

@@ -12,7 +12,7 @@ class ImageReader;
 
 namespace adaptive_restore::policy {
 
-// Precision and recall of a restore's loading decision (§22, §9.5).
+// Precision and recall of a restore's loading decision.
 //
 // `touched` is ground truth: under pure lazy every fault is a first touch, so a
 // lazy run's fault set is exactly the set of pages the workload needs. Every
@@ -40,8 +40,8 @@ struct PagingMetrics {
 };
 
 // The best any policy could do with perfect knowledge: for each region, the
-// cheapest action given the pages that region actually needs (§12's argmin, but
-// over ground truth instead of averaged history).
+// cheapest action given the pages that region actually needs (the cost model's
+// argmin, but over ground truth instead of averaged history).
 //
 // This is what turns "beat the best fixed policy by N%" into "captured N% of
 // the achievable gain". Without it a win of any size is unanchored.

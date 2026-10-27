@@ -1,7 +1,7 @@
 /* What does the prefetch path actually cost?
  *
- * §12's C_prefetch divides by `effective_bandwidth`, which Task 1 filled with
- * sequential READ bandwidth as a placeholder. The real mechanism is
+ * The cost model's C_prefetch divides by `effective_bandwidth`, first filled
+ * with sequential READ bandwidth as a placeholder. The real mechanism is
  * UFFDIO_COPY into a registered range, plus a fixed UFFDIO_REGISTER per region.
  * If those differ from a plain read, the model prices the prefetch arm wrong
  * and will pick it when it should not. */

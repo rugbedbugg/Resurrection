@@ -145,7 +145,7 @@ void transfer_control(RestoreTarget& target, const image::ImageReader& image) {
 
     // The stub is parked in a restartable syscall. Left as-is, the kernel would
     // rewind rip by 2 on resume to re-execute it, landing two bytes below the
-    // restored entry point. (docs/phase2-spike-report.md, trap 4.)
+    // restored entry point.
     regs.orig_rax = static_cast<unsigned long long>(-1);
 
     ::iovec iov{&regs, sizeof regs};

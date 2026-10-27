@@ -12,7 +12,7 @@ class ImageReader;
 
 namespace adaptive_restore::tui {
 
-// §19: the visualizer consumes logs and images. It never participates in a
+// The visualizer consumes logs and images. It never participates in a
 // restore, so nothing here may touch a process, a uffd, or the clock.
 struct Style {
     bool color = true;
@@ -37,17 +37,17 @@ struct BenchRow {
     bool output_ok = false;
 };
 
-// §19.2 view 1: the address space, one cell per region, coloured by the action
+// View 1: the address space, one cell per region, coloured by the action
 // the plan chose for it.
 void render_region_map(std::ostream& os, const image::ImageReader& image,
                        const policy::RestorePlan& plan, const Style& style);
 
-// §19.2 view 2: when demand faults arrived, against the time the restore spent
+// View 2: when demand faults arrived, against the time the restore spent
 // writing pages up front.
 void render_fault_timeline(std::ostream& os, const std::vector<FaultRow>& faults,
                            const Style& style);
 
-// §19.2 view 3: the pitch. Median resume latency per policy, side by side, per
+// View 3: the pitch. Median resume latency per policy, side by side, per
 // workload, with the per-workload winner marked.
 void render_policy_comparison(std::ostream& os, const std::vector<BenchRow>& rows,
                               const Style& style);

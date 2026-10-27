@@ -110,7 +110,7 @@ RestoreTarget::RestoreTarget(std::uint64_t reserve_addr, std::size_t reserve_byt
 
         // The privileged compel_prepare() sets up a netlink socket in the
         // target's netns and fails EPERM unprivileged; noctx skips that and
-        // leaves the infect_ctx to us. (spike report, trap 2.)
+        // leaves the infect_ctx to us.
         ctl_ = compel_prepare_noctx_compat(pid_);
         if (!ctl_) throw CheckpointError("restore: compel_prepare_noctx failed");
 
@@ -143,7 +143,7 @@ RestoreTarget::RestoreTarget(std::uint64_t reserve_addr, std::size_t reserve_byt
 
         // Record the TLS block. compel restores saved registers around every
         // injected syscall, so fs_base cannot be moved and this VMA must be
-        // spared during eviction. (spike report, trap 3.)
+        // spared during eviction.
         user_regs_struct regs{};
         ::iovec iov{&regs, sizeof regs};
         if (::ptrace(PTRACE_GETREGSET, pid_, reinterpret_cast<void*>(NT_PRSTATUS), &iov) != 0)

@@ -80,7 +80,7 @@ else()
 endif()
 
 # --- core library ------------------------------------------------------------
-# Sources are added phase by phase (see docs/design-draft-v2.md §20).
+# Sources are added phase by phase.
 add_library(adaptive_restore STATIC
     src/common/crc32c.cpp
     src/common/sha256.cpp

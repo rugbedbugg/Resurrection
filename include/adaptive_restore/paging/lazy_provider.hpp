@@ -40,7 +40,7 @@ struct LazyStats {
 };
 
 // Writes nothing before the target resumes; every page arrives as a demand
-// fault and is resolved from the image (§9.4).
+// fault and is resolved from the image.
 class LazyProvider : public PageProvider {
 public:
     LazyProvider(const image::ImageReader& image, restore::Userfault& uffd);
@@ -56,9 +56,8 @@ public:
     // the recording itself must not distort what it measures.
     void record_trace(bool on) { recording_ = on; }
 
-    // Write the trace as TSV. Debuggable by design (§7 "debuggability over
-    // compression"): this file is read by humans and by the analysis scripts,
-    // not by the restorer.
+    // Write the trace as TSV. Debuggability wins over compression here: this
+    // file is read by humans and by the analysis scripts, not by the restorer.
     void write_trace(const std::string& path) const;
 
 private:
@@ -80,7 +79,7 @@ struct ServeResult {
 
 // Drive the uffd until the target exits. Returns when the target is gone or the
 // uffd hangs up. Any unrecoverable error kills the target rather than returning
-// and leaving it stalled with nobody serving (docs/phase3-spike-report.md, Q3).
+// and leaving it stalled with nobody serving.
 ServeResult serve_faults(restore::Userfault& uffd, PageProvider& provider,
                          const PageLocator& locator, pid_t target_pid);
 

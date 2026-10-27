@@ -51,7 +51,7 @@ int main() {
                "fraction_accessed must be a running mean over restores");
         assert(rows[0].last_action == RestoreAction::Eager);
         // The working set is replaced, not averaged: it names pages, and the
-        // most recent restore is the one worth prefetching (§4, REAP).
+        // most recent restore is the one worth prefetching (REAP).
         assert(rows[0].page_was_touched(0) && rows[0].page_was_touched(3));
         assert(!rows[0].page_was_touched(2) && "the earlier set must not linger");
         // An untouched region keeps its own history.

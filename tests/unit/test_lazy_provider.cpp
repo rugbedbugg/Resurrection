@@ -81,7 +81,7 @@ int main() {
     assert(uffd.registered_bytes() == 2 * 4096);
 
     // A syscall-triggered fault would return EFAULT rather than reaching the
-    // handler under UFFD_USER_MODE_ONLY (docs/phase3-spike-report.md), so the
+    // handler under UFFD_USER_MODE_ONLY, so the
     // provider is driven directly here. UFFDIO_COPY/ZEROPAGE populate a
     // registered range whether or not a fault is pending, so this exercises the
     // real resolution path. Genuine demand faulting is covered end to end by

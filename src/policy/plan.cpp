@@ -105,9 +105,9 @@ RestorePlan plan_restore(const image::ImageReader& image,
     }
 
     // Deferring anything costs a fixed setup (uffd, page server, THP disabling)
-    // that §12 does not model. If the whole plan does not save more than that,
-    // the honest answer is to defer nothing: paying 8 ms of machinery to save
-    // 1 ms of transfer is a loss dressed up as a decision.
+    // that the cost formulas do not model. If the whole plan does not save
+    // more than that, the honest answer is to defer nothing: paying 8 ms of
+    // machinery to save 1 ms of transfer is a loss dressed up as a decision.
     if (policy == RestorePolicy::Cost && engine) {
         const auto& kcal = cold_cache ? cold_cal : warm_cal;
         const auto region_bytes = [page_size](const image::RegionRecord& r) {

@@ -153,7 +153,7 @@ RestoreSummary restore_image(const image::ImageReader& image, const RestoreOptio
             if (actions[i] != paging::RestoreAction::Eager) out.executions[i] = ex[i];
     }
 
-    // §9.2: every saved page is now either written or covered by a handler.
+    // Every saved page must be either written or covered by a handler.
     if (out.regions_eager + out.regions_lazy != regions.size())
         throw CheckpointError("restore: not every region was prepared");
 

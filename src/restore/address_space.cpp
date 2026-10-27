@@ -140,8 +140,9 @@ LayoutResult rebuild_address_space(RestoreTarget& target, const image::ImageRead
         const std::uint64_t len = m.end_vaddr - m.start_vaddr;
         const bool file_backed = (m.flags & image::MappingFlag::FileBacked) && !m.path.empty();
 
-        // Everything is mapped writable so pages can be populated; Task 5 lowers
-        // it to prot_of(m.flags) once the contents are in.
+        // Everything is mapped writable so pages can be populated;
+        // EagerProvider::apply_protections() lowers it to prot_of(m.flags)
+        // once the contents are in.
         const int prot = PROT_READ | PROT_WRITE;
         int flags = MAP_FIXED_NOREPLACE;
         flags |= (m.flags & image::MappingFlag::Shared) ? MAP_SHARED : MAP_PRIVATE;
@@ -149,7 +150,7 @@ LayoutResult rebuild_address_space(RestoreTarget& target, const image::ImageRead
         long fd = -1;
         if (file_backed) {
             // Identity check first: a changed binary must fail loudly, not
-            // silently restore a process onto different code (§28).
+            // silently restore a process onto different code.
             struct stat st {};
             if (::stat(m.path.c_str(), &st) != 0)
                 throw CheckpointError("restore: backing file is gone: " + m.path);

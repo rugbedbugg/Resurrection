@@ -24,7 +24,7 @@ struct LayoutResult {
 
 // True when any image mapping overlaps the stub's TLS block. That block is
 // load-bearing for compel and cannot be relocated, so such a stub cannot host
-// this image and must be discarded. (docs/phase2-spike-report.md, trap 3.)
+// this image and must be discarded.
 bool collides_with_tls(const RestoreTarget& target,
                        const std::vector<image::MappingRecord>& mappings);
 
@@ -48,7 +48,8 @@ void enable_huge_pages(RestoreTarget& target, std::uint64_t start, std::uint64_t
 // Every non-kernel mapping is recreated, including no-access guard regions, so
 // the restored layout matches the original rather than merely covering the
 // pages that carry data. Mappings are created writable regardless of their
-// recorded protection; Task 5 applies the real protection after populating them.
+// recorded protection; EagerProvider::apply_protections() applies the real
+// protection after populating them.
 LayoutResult rebuild_address_space(RestoreTarget& target, const image::ImageReader& image);
 
 }  // namespace adaptive_restore::restore

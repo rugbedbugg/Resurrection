@@ -1,4 +1,4 @@
-# Synthetic benchmark workloads (docs/design-draft-v2.md §21).
+# Synthetic benchmark workloads.
 # Each subdirectory gets a `main.c` in Phase 4/5; until then this is a no-op.
 #
 #   sparse_random/       touches a small random subset      -> tests lazy

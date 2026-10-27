@@ -9,7 +9,7 @@
 namespace adaptive_restore::restore {
 
 // Kept as the eager driver so existing callers are unaffected; the work now
-// lives behind the PageProvider interface (design-draft-v2 §6.1) so Phase 3's
+// lives behind the PageProvider interface so Phase 3's
 // lazy provider and Phase 4's controllers slot in without touching this.
 PopulateResult populate_pages(RestoreTarget& target, const image::ImageReader& image, bool verify) {
     paging::EagerProvider provider(target, image);
@@ -20,7 +20,7 @@ PopulateResult populate_pages(RestoreTarget& target, const image::ImageReader& i
 
     // Regions are how work is dispatched, so a page outside every region would
     // be silently skipped and the target would resume with a hole in it. The
-    // §9.2 invariant demands better than that.
+    // invariant that every saved page is written or covered demands better.
     std::uint64_t covered = 0;
     for (const auto& r : regions) covered += r.page_index_hi - r.page_index_lo;
     if (covered != image.page_index().size())

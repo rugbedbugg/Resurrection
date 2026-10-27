@@ -14,7 +14,7 @@ class ImageReader;
 namespace adaptive_restore::paging {
 
 // Writes a region's pages in full before the target resumes. The correctness
-// reference every other action is measured against (§9.3).
+// reference every other action is measured against.
 class EagerProvider : public PageProvider {
 public:
     EagerProvider(restore::RestoreTarget& target, const image::ImageReader& image);
@@ -26,7 +26,7 @@ public:
     // region is prepared: a region mapped read-only could not be written.
     void apply_protections();
 
-    // Read every page back from the target and re-checksum it (§9.3).
+    // Read every page back from the target and re-checksum it.
     void verify();
 
     const restore::PopulateResult& stats() const { return stats_; }

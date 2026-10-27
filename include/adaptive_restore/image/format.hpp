@@ -10,11 +10,10 @@
 #include "adaptive_restore/common/version.hpp"
 
 // Image format v1 record structs + wire constants.
-// See docs/specs/phase1-checkpoint-capture-design.md §"Image format v1".
 //
-// NOTE (deviation from the task brief): the brief specifies kHeaderSize == 256,
-// but the header's own field list (136-byte fixed prefix + SectionRef[7] at
-// 24 bytes each + a u32 metadata_crc32c) is 308 bytes and cannot fit in 256.
+// kHeaderSize is not 256: the header's own field list (136-byte fixed prefix
+// + SectionRef[7] at 24 bytes each + a u32 metadata_crc32c) is 308 bytes and
+// cannot fit in 256.
 // SectionRef is the authoritative 3x u64 struct, so the header grows instead:
 // kHeaderSize == 320 (308 rounded up to a 64-byte boundary). The on-wire
 // header_size field is written so any reader learns the true size rather than

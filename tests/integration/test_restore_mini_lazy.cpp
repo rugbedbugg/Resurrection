@@ -1,4 +1,4 @@
-// Phase 3 correctness parity (§20 Phase 3, §25.2, §25.3): lazy restoration must
+// Phase 3 correctness parity: lazy restoration must
 // pass the same correctness bar as eager, and produce byte-identical output.
 #include <sys/wait.h>
 #include <unistd.h>
@@ -74,7 +74,7 @@ int main() {
     assert(lazy_log.find("neither loaded nor demanded") != std::string::npos &&
            "a workload that touches only part of its memory must leave pages undemanded");
 
-    // --- repeated restore from the same image (§25.2) -----------------------
+    // --- repeated restore from the same image -------------------------------
     const std::string again = restore_and_capture(base, img, "lazy", "", nullptr);
     assert(again == kBaseline && "an image must be restorable more than once");
 

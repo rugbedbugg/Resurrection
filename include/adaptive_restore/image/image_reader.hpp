@@ -38,7 +38,7 @@ public:
     // Omitted: throws ImageError.
     std::span<const std::byte> page_bytes(const PageIndexRecord& rec) const;
 
-    // Stable identity of what this image describes (§16.1): the address-space
+    // Stable identity of what this image describes: the address-space
     // layout and the binaries behind it. Deliberately excludes the original pid
     // and capture timestamp, so two checkpoints of the same program at the same
     // point share a profile instead of each starting from no history.

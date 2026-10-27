@@ -74,7 +74,7 @@ int main() {
         uffd.register_missing(base, base + 2 * 4096);
         assert(uffd.registered_bytes() == 2 * 4096);
 
-        // compel must keep working after registration; Task 4 builds the
+        // compel must keep working after registration; serve_faults() is the
         // server that actually resolves faults in this range.
         assert(target.syscall(__NR_getpid) == target.pid());
 
@@ -97,7 +97,7 @@ int main() {
     }
 
     // --- the safety mechanism: a dead page server must not leave a wedged
-    // --- target behind (docs/phase3-spike-report.md, Q3) --------------------
+    // --- target behind ------------------------------------------------------
     {
         int tube[2];
         assert(::pipe(tube) == 0);

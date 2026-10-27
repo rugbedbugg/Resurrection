@@ -1,8 +1,8 @@
-// arctl visualize -- §19. Reads what a restore left behind and draws it.
+// arctl visualize. Reads what a restore left behind and draws it.
 //
 // Strictly a consumer: it opens images, fault traces and benchmark results, and
-// never starts a process. That is the §19 rule ("never participate in the
-// restore critical path"), and it is also why this command builds in every
+// never starts a process. It never participates in the restore critical
+// path, and it is also why this command builds in every
 // configuration, including the one without compel.
 
 #include <unistd.h>

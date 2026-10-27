@@ -1,4 +1,4 @@
-/* Mixed regions (design-draft-v2 §21): four large allocations with deliberately
+/* Mixed regions: four large allocations with deliberately
  * different access behaviour after the checkpoint, in one process.
  *
  * This is the workload the project exists to win on. No fixed policy can be

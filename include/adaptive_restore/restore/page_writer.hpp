@@ -30,7 +30,7 @@ struct PopulateResult {
 // read-only before writing it would make the write fail.
 //
 // With `verify`, every page is read back from the target and re-checksummed
-// against the image. That is the eager correctness reference (§9.2/§9.3).
+// against the image. That is the eager correctness reference.
 PopulateResult populate_pages(RestoreTarget& target, const image::ImageReader& image, bool verify);
 
 }  // namespace adaptive_restore::restore

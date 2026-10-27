@@ -5,7 +5,7 @@
 
 namespace adaptive_restore::policy {
 
-// The Tier 1 feature set (§10.1). Deliberately small: everything here is either
+// The Tier 1 feature set. Deliberately small: everything here is either
 // read straight out of the image or averaged from the profile, so a decision can
 // be explained by pointing at the numbers that produced it.
 struct RegionFeatures {
@@ -31,7 +31,7 @@ struct RegionFeatures {
     }
 };
 
-// What actually happened, fed back after a restore (§6.2).
+// What actually happened, fed back after a restore.
 struct RegionOutcome {
     std::uint32_t pages_touched = 0;
     std::uint32_t pages_loaded = 0;
@@ -44,7 +44,7 @@ struct RegionDecision {
     float confidence = 0.0f;
     float predicted_cost = 0.0f;   // seconds, the winning arm's cost
 
-    // Why, in numbers. §12 sells this controller on being explainable, so the
+    // Why, in numbers. This controller is meant to be explainable, so the
     // losing arms travel with the winner.
     float cost_eager = 0.0f;
     float cost_prefetch = 0.0f;

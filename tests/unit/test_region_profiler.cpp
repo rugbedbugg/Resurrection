@@ -71,7 +71,7 @@ int main() {
         assert(std::fabs(hist[1].zero_page_fraction - 0.5f) < 1e-6);
         assert(hist[0].restore_count == 1 && "one observation per restore");
 
-        // The bitmap must name WHICH pages, not just how many (§9.5).
+        // The bitmap must name WHICH pages, not just how many.
         assert(!hist[0].page_was_touched(0) && hist[0].page_was_touched(1) &&
                !hist[0].page_was_touched(2) && !hist[0].page_was_touched(3));
         assert(hist[1].page_was_touched(0) && hist[1].page_was_touched(1) &&

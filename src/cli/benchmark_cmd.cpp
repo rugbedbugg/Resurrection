@@ -76,7 +76,7 @@ int cmd_benchmark(std::span<const std::string_view> args) {
         std::filesystem::create_directories(out_dir);
 
         // Raw rows are written immutably, one per run, so the reduction below
-        // can be redone without repeating hours of measurement (§23).
+        // can be redone without repeating hours of measurement.
         const std::string raw_path = out_dir + "/raw.tsv";
         std::ofstream raw(raw_path);
         raw << "workload\tpolicy\tcache\trep\trestore_ms\ttotal_ms\tfaults\toutput_ok\n";
@@ -125,7 +125,7 @@ int cmd_benchmark(std::span<const std::string_view> args) {
                                 !bench::evict_from_page_cache(wl, why))
                                 return fail("cannot produce a cold cache: " + why +
                                             "\n       Refusing to record cold rows that are "
-                                            "warm measurements (§26).");
+                                            "warm measurements.");
                         }
 
                         const double t0 = now_ms();
@@ -157,8 +157,8 @@ int cmd_benchmark(std::span<const std::string_view> args) {
         }
         raw.close();
 
-        // Medians, not means (§23). Cache state is stated on every row, because
-        // a number without it is not interpretable (§26).
+        // Medians, not means. Cache state is stated on every row, because
+        // a number without it is not interpretable.
         std::cout << "\nmedian restore cost, ms\n";
         std::cout << "  workload/cache            ";
         for (const auto& p : suite.policies) std::printf("%10s", p.c_str());

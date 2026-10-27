@@ -1,10 +1,9 @@
-// Phase 4 exit gate (§20): the cost-model controller must beat every fixed
+// Phase 4 exit gate: the cost-model controller must beat every fixed
 // policy on a mixed-region workload, with every policy producing identical
 // output.
 //
-// The threshold (15%) was fixed in docs/phase4-calibration-report.md before any
-// of these numbers existed, because §2.3 requires a null result to be
-// reportable rather than engineered away.
+// The threshold (15%) was fixed before any of these numbers existed, so a null
+// result stays reportable rather than engineered away.
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -31,13 +30,13 @@ using namespace std::string_literals;
 // policy. It deliberately does not assert a magnitude.
 //
 // Measured margins over ~30 independent runs: mostly 18%..27%, with occasional
-// dips to ~6% when the machine is busy. §26 warns that CPU frequency scaling
+// dips to ~6% when the machine is busy. CPU frequency scaling
 // and background load add variance; on an unpinned shared machine any specific
 // threshold is a coin flip near the tail, and a gate that fails a fifth of the
 // time teaches people to ignore it.
 //
-// The magnitude lives in docs/phase4-calibration-report.md, backed by the full
-// distribution rather than by one sample.
+// The magnitude belongs in a benchmark report, backed by the full distribution
+// rather than by one sample.
 static const int kReps = 11;
 
 static int run(const std::string& cmd) {

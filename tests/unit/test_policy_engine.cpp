@@ -27,7 +27,7 @@ int main() {
     const SystemState cold{true};
     const SystemState warm{false};
 
-    // --- §11.1 dense region: eager ----------------------------------------
+    // --- dense region: eager -----------------------------------------------
     {
         const auto d = engine.choose(region(1.0f, 0, 10), cold);
         assert(d.action == RestoreAction::Eager);
@@ -35,14 +35,14 @@ int main() {
         assert(d.confidence > 0.9f && "ten restores of history is confident");
     }
 
-    // --- §11.3 sparse region: lazy ----------------------------------------
+    // --- sparse region: lazy -----------------------------------------------
     {
         const auto d = engine.choose(region(0.02f, 0, 10), cold);
         assert(d.action == RestoreAction::Lazy);
         assert(d.cost_lazy < d.cost_eager);
     }
 
-    // --- §11.2 stable useful subset: prefetch ------------------------------
+    // --- stable useful subset: prefetch ------------------------------------
     // 30% touched, and history says which 20 pages. Prefetch loads exactly
     // those, so it beats reading all 64 and beats faulting 19 times.
     {
@@ -84,7 +84,7 @@ int main() {
 
     // --- prefetching a known page must beat faulting for it ----------------
     // A fault is a round trip; a prefetch is a copy. If this inverted, static
-    // prefetch could never pay for itself and §11.2 would be unreachable.
+    // prefetch could never pay for itself and that action would be unreachable.
     {
         const auto known = engine.choose(region(0.10f, 6, 10), cold);
         const auto blind = engine.choose(region(0.10f, 0, 10), cold);
@@ -93,7 +93,7 @@ int main() {
                "knowing which pages are needed must be worth something");
     }
 
-    // --- the losing arms travel with the winner (§12 explainability) -------
+    // --- the losing arms travel with the winner (explainability) -----------
     {
         const auto d = engine.choose(region(0.30f, 20, 3), cold);
         assert(d.cost_eager > 0 && d.cost_lazy > 0 && d.cost_prefetch > 0);

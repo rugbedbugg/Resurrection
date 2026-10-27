@@ -51,7 +51,7 @@ RegionDecision CostModelPolicyEngine::choose(const RegionFeatures& f, const Syst
         d.cost_prefetch = std::numeric_limits<float>::infinity();
     }
 
-    // argmin (§12).
+    // argmin.
     d.action = paging::RestoreAction::Eager;
     d.predicted_cost = d.cost_eager;
     if (d.cost_prefetch < d.predicted_cost) {
@@ -63,7 +63,7 @@ RegionDecision CostModelPolicyEngine::choose(const RegionFeatures& f, const Syst
         d.predicted_cost = d.cost_lazy;
     }
 
-    // Tier 1 confidence is a fixed heuristic (§6.2): how much history backs the
+    // Tier 1 confidence is a fixed heuristic: how much history backs the
     // fraction this decision rests on. Tier 2 learns it.
     d.confidence = !has_history ? 0.0f
                                 : static_cast<float>(std::min(1.0, static_cast<double>(f.restore_count) / 5.0));

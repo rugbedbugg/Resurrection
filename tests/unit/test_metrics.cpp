@@ -72,7 +72,7 @@ int main() {
     assert(std::fabs(smart_cost - bound.seconds) < 1e-9 &&
            "choosing the oracle's action per region must cost the oracle's price");
 
-    // Waste and coverage, the §22 paging metrics.
+    // Waste and coverage, the paging metrics.
     PagingMetrics eager_m{24, 9, 15};   // loaded all 24, needed 9, wasted 15
     assert(std::fabs(eager_m.waste() - 15.0 / 24.0) < 1e-9);
     assert(std::fabs(eager_m.coverage() - 1.0) < 1e-9 && "eager needs nothing at fault time");

@@ -88,7 +88,7 @@ ProfileStore ProfileStore::open(const std::filesystem::path& path) {
         "  touched_bitmap BLOB,"
         "  PRIMARY KEY (key, region_id));");
 
-    // Schema versioning (§16.3): refuse a database this build cannot read
+    // Schema versioning: refuse a database this build cannot read
     // rather than misinterpreting its columns.
     ::sqlite3_stmt* st = nullptr;
     ::sqlite3_prepare_v2(s.impl_->db, "SELECT v FROM meta WHERE k='schema_version';", -1, &st,
@@ -162,7 +162,7 @@ void ProfileStore::record(const ProfileKey& key, const std::vector<RegionHistory
     impl_->exec("BEGIN IMMEDIATE;");
     try {
         for (const auto& o : observed) {
-            // Running mean over the last N restores of this identity (§10.1).
+            // Running mean over the last N restores of this identity.
             // Stored as an incremental average so no history of samples is kept.
             ::sqlite3_stmt* st = impl_->prepare(
                                  "INSERT INTO region_history"

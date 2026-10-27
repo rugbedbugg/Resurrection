@@ -4,8 +4,8 @@
 
 namespace adaptive_restore::paging {
 
-// What a region's pages cost at restore time. Frozen early (design-draft-v2
-// §6.1) so Phase 4's controllers drop in without touching the data plane.
+// What a region's pages cost at restore time. Frozen early so Phase 4's
+// controllers drop in without touching the data plane.
 enum class RestoreAction {
     Eager,           // write the region's pages before resuming
     StaticPrefetch,  // write a recorded subset before resuming, fault the rest

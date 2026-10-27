@@ -1,6 +1,6 @@
 // Cold-cache measurement is only worth anything if the cache is actually cold.
 // posix_fadvise(DONTNEED) is advisory and silently does nothing in several
-// ordinary situations, so the harness verifies rather than trusts it (§26).
+// ordinary situations, so the harness verifies rather than trusts it.
 
 #include <fcntl.h>
 #include <sys/mman.h>

@@ -191,7 +191,7 @@ void PrefetchProvider::prepare_region(std::uint32_t region_id, RestoreAction act
 }
 
 void PrefetchProvider::service_fault(const PageRequest& request) {
-    // Reaching here means the page was not prefetched: a miss (§9.5).
+    // Reaching here means the page was not prefetched: a miss.
     ++stats_.misses;
     lazy_.service_fault(request);
 }
@@ -205,10 +205,11 @@ std::uint64_t PrefetchProvider::copy_run(std::uint64_t vaddr, const std::byte* s
     if (::ioctl(uffd_.fd(), UFFDIO_COPY, &c) != 0) {
         // EEXIST is NOT benign. It means a page this code believed missing is
         // already resident, so its model of the address space is wrong and the
-        // §9.2 invariant no longer holds. Skipping the copy and carrying on was
-        // tried, and produced a target that ran on stale memory and died with
-        // heap corruption -- silent wrongness, the worst outcome there is.
-        // §25.4: fail explicitly, never execute partially-restored state.
+        // invariant that every saved page is written or covered fails.
+        // Skipping the copy and carrying on was tried, and produced a target
+        // that ran on stale memory and died with heap corruption -- silent
+        // wrongness, the worst outcome there is.
+        // Fail explicitly, never execute partially-restored state.
         ++stats_.already_present;
         throw CheckpointError(
             "restore: page at " + hex(vaddr) +
@@ -241,7 +242,7 @@ std::uint64_t PrefetchProvider::unused_prefetched() const {
     // the target has run: prefetched pages that no later fault needed. Under
     // static prefetch the honest figure is pages_prefetched minus those the
     // workload would have demanded, which only a lazy reference run can supply.
-    // Reported as the raw count here; Task 8 pairs it with an oracle run.
+    // Reported as the raw count here; oracle_bound() supplies the reference.
     return stats_.pages_prefetched;
 }
 

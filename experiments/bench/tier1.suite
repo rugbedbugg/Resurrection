@@ -1,4 +1,4 @@
-# Tier 1 benchmark suite (design-draft-v2 §21).
+# Tier 1 benchmark suite.
 #
 # Relative paths resolve against the working directory, so run this from the
 # repository root with a configured build/.

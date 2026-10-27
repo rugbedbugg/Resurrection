@@ -82,7 +82,7 @@ int main() {
         assert(std::memcmp(got.data(), content[2].data(), 4096) == 0);
 
         // ...and the unprefetched ones are still MISSING, so they will fault
-        // rather than silently reading as zero. That is §11.4's safety
+        // rather than silently reading as zero. That is the safety
         // fallback: a wrong prediction costs latency, never correctness.
         bool page1_missing = false;
         try {

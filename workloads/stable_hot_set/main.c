@@ -1,4 +1,4 @@
-/* Stable hot set (design-draft-v2 §21): reuses the same subset on every restore.
+/* Stable hot set: reuses the same subset on every restore.
  *
  * The case static prefetch exists for. The touched subset is fixed and
  * deterministic, so a working set recorded once is still correct next time, and
