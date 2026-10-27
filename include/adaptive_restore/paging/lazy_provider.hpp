@@ -17,9 +17,8 @@ class ImageReader;
 namespace adaptive_restore::paging {
 
 // One demand fault, as it happened. Under pure lazy every first touch faults,
-// so a full trace IS the workload's touched set -- the ground truth Phase 4
-// measures waste and coverage against, and the reason this is designed here
-// rather than when the benchmark harness is written.
+// so a full trace IS the workload's touched set -- the ground truth the profile
+// and the benchmark measure waste and coverage against.
 struct FaultRecord {
     std::uint64_t vaddr = 0;
     std::uint32_t region_id = 0;

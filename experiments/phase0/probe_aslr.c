@@ -1,9 +1,7 @@
-// Phase 0 probe: deterministic address-space layout via ADDR_NO_RANDOMIZE.
+// Probe: deterministic address-space layout via ADDR_NO_RANDOMIZE.
 //
-// Design draft v2 sections referenced:
-//   - S5.2        (address space must be reconstructable at saved virtual
-//                  addresses -> ASLR must be disabled for the target)
-//   - S20 Phase 0 (confirm the ASLR-disable mechanism works for the target class)
+// The address space must be reconstructable at saved virtual addresses, so
+// ASLR must be disabled for the target.
 //
 // What this checks:
 //   1. personality(ADDR_NO_RANDOMIZE) can be set unprivileged.

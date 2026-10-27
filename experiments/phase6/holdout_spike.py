@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Phase 6A spike: how well does a held-out sample estimate prefetch precision?
+"""Spike: how well does a held-out sample estimate prefetch precision?
 
 A prefetched page is resident and reveals nothing about whether it was read.
 Withhold k pages of the prediction instead: they stay absent, so they fault iff

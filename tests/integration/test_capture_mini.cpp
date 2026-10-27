@@ -14,8 +14,8 @@
 using namespace adaptive_restore::image;
 
 // workload_mini is a fixed-seed LCG over 4096 words XOR-folded into `sum`, so
-// with ASLR off its output is a constant. This is the Phase 1 baseline digest
-// that Phase 2 restores must reproduce.
+// with ASLR off its output is a constant. This is the baseline digest that
+// every restore must reproduce.
 static const char* kBaseline = "sum=11791276921336954880\n";
 
 static int run(const std::string& cmd) {

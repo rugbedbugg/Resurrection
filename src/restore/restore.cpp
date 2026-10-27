@@ -128,7 +128,7 @@ RestoreSummary restore_image(const image::ImageReader& image, const RestoreOptio
         session->provider = std::make_unique<paging::PrefetchProvider>(image, *target,
                                                                       *session->uffd, history);
         session->provider->record_trace(!opts.trace_path.empty() || !opts.profile_path.empty());
-        // EXPERIMENTAL (Phase 6A spike): unset in every normal run, so the
+        // EXPERIMENTAL: unset in every normal run, so the
         // default restore path is bit-identical to v0.5.1.
         session->provider->set_holdout(paging::HoldoutConfig::from_env());
     }

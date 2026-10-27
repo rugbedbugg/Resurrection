@@ -110,7 +110,7 @@ int main() {
     mem.read_range(kLazy + 4096, 4096, got);
     assert(checkpoint::page_is_zero(got) && "the zero page must arrive zeroed");
 
-    // The trace is the touched set Phase 4 measures waste and coverage against,
+    // The trace is the touched set the profile measures waste and coverage against,
     // so it must record what was actually served, in order.
     const auto& tr = provider.trace();
     assert(tr.size() == 2);

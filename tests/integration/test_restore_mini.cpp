@@ -1,4 +1,4 @@
-// Phase 2 exit gate: a checkpointed deterministic program resumes from the
+// Gate: a checkpointed deterministic program resumes from the
 // saved instruction and produces output identical to an uninterrupted run.
 #include <sys/wait.h>
 #include <unistd.h>
@@ -14,8 +14,8 @@
 
 using namespace adaptive_restore::image;
 
-// Fixed-seed LCG over 4096 words, ASLR off, so this is a constant. Established
-// in Phase 1 and asserted there too; a restore must reproduce it exactly.
+// Fixed-seed LCG over 4096 words, ASLR off, so this is a constant. capture_mini
+// asserts it too. A restore must reproduce it exactly.
 static const char* kBaseline = "sum=11791276921336954880\n";
 
 static int run(const std::string& cmd) {

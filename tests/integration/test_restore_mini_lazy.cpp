@@ -1,4 +1,4 @@
-// Phase 3 correctness parity: lazy restoration must
+// Correctness parity: lazy restoration must
 // pass the same correctness bar as eager, and produce byte-identical output.
 #include <sys/wait.h>
 #include <unistd.h>
@@ -12,7 +12,7 @@
 
 using namespace std::string_literals;
 
-// Established in Phase 1; a restore under any policy must reproduce it exactly.
+// capture_mini asserts this too. A restore under any policy must reproduce it exactly.
 static const char* kBaseline = "sum=11791276921336954880\n";
 
 static int run(const std::string& cmd) {

@@ -1,9 +1,7 @@
-// Phase 0 probe: ptrace attach + general-purpose register capture/restore.
+// Probe: ptrace attach + general-purpose register capture/restore.
 //
-// Design draft v2 sections referenced:
-//   - S8 step 1/3  (checkpoint: ptrace attach/stop, capture GP registers + IP)
-//   - S9.1 step 8  (restore: register restoration)
-//   - S20 Phase 0  (verify ptrace + register capture in the grading environment)
+// Checkpoint stops the target under ptrace and captures GP registers + IP.
+// Restore writes them back.
 //
 // What this checks:
 //   1. We can spawn a target and stop it under ptrace (ptrace_scope=1 => must be

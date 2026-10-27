@@ -1,4 +1,4 @@
-# Phase 0 feasibility probes -- build + run with `make` then `make check`.
+# Feasibility probes -- build + run with `make` then `make check`.
 # These are throwaway spikes, deliberately kept out of the CMake tree.
 
 CC      ?= cc

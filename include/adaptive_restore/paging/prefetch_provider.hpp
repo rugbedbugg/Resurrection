@@ -21,7 +21,7 @@ namespace adaptive_restore::paging {
 
 // What the prediction got right, what it missed,
 // and what it loaded for nothing. The last two are precision and recall of the
-// recorded working set, and are what Phase 5 reports as waste and coverage.
+// recorded working set, and are what the benchmark reports as waste and coverage.
 struct PrefetchStats {
     std::uint64_t regions_prefetched = 0;
     std::uint64_t pages_prefetched = 0;    // written up front from history
@@ -34,7 +34,7 @@ struct PrefetchStats {
     std::uint64_t pages_held_out = 0;            // EXPERIMENTAL: see HoldoutConfig
 };
 
-// EXPERIMENTAL (Phase 6A spike, off by default).
+// EXPERIMENTAL (off by default).
 //
 // Withhold k pages of each region's predicted set from prefetching so they
 // stay absent and therefore fault if the workload still wants them. The fault

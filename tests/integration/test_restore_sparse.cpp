@@ -1,4 +1,4 @@
-// Phase 3 exit gate, second half: lazy restoration must load only the
+// Gate, second half: lazy restoration must load only the
 // pages a sparse workload actually accesses. The first half (correctness parity
 // with eager) is test_restore_mini_lazy.
 #include <sys/wait.h>

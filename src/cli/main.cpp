@@ -1,12 +1,6 @@
 // arctl -- command-line front end for adaptive-restore.
 //
-// The command surface was filled in phase by
-// phase. All of Tier 1 is now implemented:
-//   Phase 1: checkpoint, inspect
-//   Phase 2: restore --policy eager
-//   Phase 3: restore --policy lazy
-//   Phase 4: restore --policy prefetch|cost, profile show/reset
-//   Phase 5: benchmark, visualize
+// Commands: checkpoint, inspect, restore, profile, benchmark, visualize.
 
 #include <cerrno>
 #include <cstring>

@@ -1,4 +1,4 @@
-// Phase 6A: one image, two working sets, selected from outside the checkpoint.
+// One image, two working sets, selected from outside the checkpoint.
 //
 // The point is that NOTHING about the phase lives in the image. argv strings,
 // environ and every pointer into them are ordinary memory and are restored

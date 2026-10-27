@@ -1,9 +1,7 @@
-// Phase 0 probe: lazy paging via userfaultfd(2) in UFFD_USER_MODE_ONLY mode.
+// Probe: lazy paging via userfaultfd(2) in UFFD_USER_MODE_ONLY mode.
 //
-// Design draft v2 sections referenced:
-//   - S9.4        (restore: lazy restoration, UFFDIO_COPY / UFFDIO_ZEROPAGE)
-//   - S20 Phase 0 (probe userfaultfd access mode concretely, in this exact env)
-//   - S27 risk 2  ("userfaultfd access restricted in the actual environment")
+// Lazy restoration serves pages with UFFDIO_COPY / UFFDIO_ZEROPAGE. The risk is
+// that userfaultfd access is restricted in the actual environment.
 //
 // Why UFFD_USER_MODE_ONLY: this machine has vm.unprivileged_userfaultfd = 0,
 // so an unprivileged userfaultfd() call is rejected unless it asks for

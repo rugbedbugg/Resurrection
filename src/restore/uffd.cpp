@@ -37,8 +37,8 @@ Userfault::Userfault(RestoreTarget& target)
       reserve_end_(target.reserve_addr() + target.reserve_bytes()),
       tls_start_(target.tls_start()),
       tls_end_(target.tls_end()) {
-    // UFFD_USER_MODE_ONLY is the Phase 0 decision: it works even where
-    // vm.unprivileged_userfaultfd is 0, and there is no fallback.
+    // UFFD_USER_MODE_ONLY works even where
+    // vm.unprivileged_userfaultfd is 0. There is no fallback.
     // O_NONBLOCK matters more than it looks: the kernel's userfaultfd_poll()
     // returns EPOLLERR outright for a blocking fd, because poll() cannot
     // promise that a subsequent read() will not block. Without it every poll

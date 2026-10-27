@@ -1,4 +1,4 @@
-// Phase 4 exit gate: the cost-model controller must beat every fixed
+// Gate: the cost-model controller must beat every fixed
 // policy on a mixed-region workload, with every policy producing identical
 // output.
 //

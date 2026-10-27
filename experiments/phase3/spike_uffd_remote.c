@@ -1,10 +1,10 @@
-/* Phase 3 spike: can arctl own the target's userfaultfd from outside?
+/* Spike: can arctl own the target's userfaultfd from outside?
  *
- * The whole phase rests on one question: does UFFDIO_REGISTER, issued by the
+ * Lazy restore rests on one question: does UFFDIO_REGISTER, issued by the
  * parent on a uffd that was created inside the child and stolen with
  * pidfd_getfd, register ranges in the CHILD's address space? If not, the fd has
  * to live in the target and be driven from inside, which reintroduces exactly
- * the blob complexity Phase 2 removed.
+ * the blob complexity the eager restorer avoids.
  *
  * Also answers: does UFFDIO_ZEROPAGE work the same way, what does a fault
  * message look like, and what happens to the child if the server dies. */

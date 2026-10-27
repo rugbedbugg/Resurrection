@@ -258,7 +258,7 @@ int cmd_restore(std::span<const std::string_view> args) {
             if (ls.faults_served > 0)
                 std::cout << "  latency    " << (ls.service_ns_total / ls.faults_served)
                           << " ns mean per fault, " << ls.service_ns_total << " ns total\n";
-            // EXPERIMENTAL (Phase 6A spike): dump every page the prediction
+            // EXPERIMENTAL: dump every page the prediction
             // named, flagged with whether it was withheld. Off unless the env
             // var is set, so no normal restore writes this.
             if (const char* rp = std::getenv("AR_EXPERIMENTAL_HOLDOUT_REPORT")) {

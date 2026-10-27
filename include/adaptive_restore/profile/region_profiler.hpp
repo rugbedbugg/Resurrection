@@ -65,8 +65,8 @@ std::vector<RegionObservation> observe_regions(
 // A partially observed region carries real information (its misses prove the
 // prediction is incomplete), but v2's single `touched_bitmap` has no way to say
 // "this bit is unknown". Merging it would silently fabricate negatives, so
-// Phase 6A reports those regions and stores none of them. Phase 6B's schema is
-// where partial evidence becomes persistable.
+// this reports those regions and stores none of them. Persisting partial
+// evidence needs a schema that can mark a bit unknown.
 std::vector<RegionHistory> to_history(const std::vector<RegionObservation>& observed,
                                       std::uint32_t* skipped_partial = nullptr);
 

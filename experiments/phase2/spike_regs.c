@@ -1,4 +1,4 @@
-/* Phase 2 spike 4: can the reserve be made fully self-contained, and can control
+/* Spike 4: can the reserve be made fully self-contained, and can control
  * be transferred with PTRACE_SETREGSET alone?
  *
  * Spike 3 showed the TLS block must survive the eviction sweep, because fs_base

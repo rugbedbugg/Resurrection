@@ -1,6 +1,6 @@
-/* Minimal Phase 1 capture target: touches heap, stack, .data and libc, then
+/* Minimal capture target: touches heap, stack, .data and libc, then
  * stops at the marker. Deterministic under ASLR-off with a fixed seed, so an
- * uninterrupted run gives the baseline `sum` that Phase 2 restores must match. */
+ * uninterrupted run gives the baseline `sum` that every restore must match. */
 #include <stdio.h>
 #include <stdlib.h>
 

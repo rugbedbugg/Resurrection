@@ -1,5 +1,4 @@
 // Smoke test: the tree compiles, headers are reachable, invariants hold.
-// Replace/expand once Phase 1 adds real image encode/decode logic.
 
 #include <cstdio>
 

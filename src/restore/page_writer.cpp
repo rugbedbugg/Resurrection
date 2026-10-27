@@ -8,9 +8,8 @@
 
 namespace adaptive_restore::restore {
 
-// Kept as the eager driver so existing callers are unaffected; the work now
-// lives behind the PageProvider interface so Phase 3's
-// lazy provider and Phase 4's controllers slot in without touching this.
+// The eager driver. The work lives behind the PageProvider interface so the
+// lazy provider and the policy controllers slot in without touching this.
 PopulateResult populate_pages(RestoreTarget& target, const image::ImageReader& image, bool verify) {
     paging::EagerProvider provider(target, image);
 

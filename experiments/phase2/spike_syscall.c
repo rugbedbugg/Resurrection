@@ -1,4 +1,4 @@
-/* Phase 2 spike 2: can we drive syscalls inside a stopped target from outside,
+/* Spike 2: can we drive syscalls inside a stopped target from outside,
  * without root and without writing a parasite blob?
  *
  * compel_prepare() sets up a netlink socket in the target's netns and needs

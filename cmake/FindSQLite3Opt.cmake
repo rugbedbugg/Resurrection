@@ -1,4 +1,4 @@
-# Optional SQLite3 for the Phase 4 profile store.
+# Optional SQLite3 for the profile store.
 #
 # Like compel, this is restore-side only: checkpoint and inspect must keep
 # building without it. Absence disables the profile-backed policies

@@ -1,4 +1,4 @@
-/* Phase 2 spike 1: does the compel toolchain work at all in this environment?
+/* Spike 1: does the compel toolchain work at all in this environment?
  *
  * Prepares a stopped child for infection and cures it again, without any
  * parasite blob. Establishes the baseline before anything harder is attempted.

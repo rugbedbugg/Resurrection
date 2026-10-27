@@ -1,6 +1,5 @@
-# Test suite. Unit tests are plain executables registered with CTest -- no
-# framework dependency yet; add one (Catch2/doctest) when Phase 1 lands real
-# encode/decode logic to test.
+# Test suite. Unit tests are plain executables registered with CTest. There is
+# no framework dependency.
 
 # Every test: links the core lib, keeps assert() live under any build type,
 # registers with CTest. Extra deps/defs go on the returned test_<name> target.
@@ -35,7 +34,7 @@ if(SQLite3Opt_FOUND)
     ar_add_test(metrics unit/test_metrics.cpp)
 
     if(Compel_FOUND)
-        # Phase 6A regression: prefetch-fault evidence must not be discarded.
+        # Regression: prefetch-fault evidence must not be discarded.
         # Needs SQLite as well as compel: --policy prefetch requires --profile.
         ar_add_test(prefetch_observes integration/test_prefetch_observes.cpp)
         target_compile_definitions(test_prefetch_observes PRIVATE
@@ -44,7 +43,7 @@ if(SQLite3Opt_FOUND)
         add_dependencies(test_prefetch_observes arctl workload_sparse_random)
         set_tests_properties(prefetch_observes PROPERTIES TIMEOUT 300)
 
-        # Phase 4 exit gate: the controller must beat every fixed policy.
+        # Gate: the controller must beat every fixed policy.
         ar_add_test(cost_model_gate integration/test_cost_model_gate.cpp)
         target_compile_definitions(test_cost_model_gate PRIVATE
             ARCTL_PATH="$<TARGET_FILE:arctl>"
@@ -65,21 +64,21 @@ if(Compel_FOUND)
     ar_add_test(lazy_provider unit/test_lazy_provider.cpp)
     ar_add_test(prefetch_provider unit/test_prefetch_provider.cpp)
 
-    # Phase 3 parity: lazy must match eager, byte for byte, on the real workload.
+    # Parity: lazy must match eager, byte for byte, on the real workload.
     ar_add_test(restore_mini_lazy integration/test_restore_mini_lazy.cpp)
     target_compile_definitions(test_restore_mini_lazy PRIVATE
         ARCTL_PATH="$<TARGET_FILE:arctl>"
         MINI_PATH="$<TARGET_FILE:workload_mini>")
     add_dependencies(test_restore_mini_lazy arctl workload_mini)
 
-    # Phase 3 exit gate: lazy must load only what a sparse workload accesses.
+    # Gate: lazy must load only what a sparse workload accesses.
     ar_add_test(restore_sparse integration/test_restore_sparse.cpp)
     target_compile_definitions(test_restore_sparse PRIVATE
         ARCTL_PATH="$<TARGET_FILE:arctl>"
         SPARSE_PATH="$<TARGET_FILE:workload_sparse_random>")
     add_dependencies(test_restore_sparse arctl workload_sparse_random)
 
-    # Phase 6A: one image, two working sets, chosen by an external control file.
+    # One image, two working sets, chosen by an external control file.
     ar_add_test(phase_change integration/test_phase_change.cpp)
     target_compile_definitions(test_phase_change PRIVATE
         ARCTL_PATH="$<TARGET_FILE:arctl>"
@@ -87,7 +86,7 @@ if(Compel_FOUND)
     add_dependencies(test_phase_change arctl workload_sudden_phase_change)
     set_tests_properties(phase_change PROPERTIES TIMEOUT 300)
 
-    # Phase 2 exit gate: real arctl, real workload, checkpoint then restore.
+    # Gate: real arctl, real workload, checkpoint then restore.
     ar_add_test(restore_mini integration/test_restore_mini.cpp)
     target_compile_definitions(test_restore_mini PRIVATE
         ARCTL_PATH="$<TARGET_FILE:arctl>"
@@ -95,7 +94,7 @@ if(Compel_FOUND)
     add_dependencies(test_restore_mini arctl workload_mini)
 endif()
 
-# Phase 1 exit gate: drives the real arctl binary against the real workload.
+# Gate: drives the real arctl binary against the real workload.
 ar_add_test(capture_mini integration/test_capture_mini.cpp)
 target_compile_definitions(test_capture_mini PRIVATE
     ARCTL_PATH="$<TARGET_FILE:arctl>"

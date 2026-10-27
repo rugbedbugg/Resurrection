@@ -1,4 +1,4 @@
-// Regression for the Phase 6A observation bug.
+// Regression for the prefetch observation bug.
 //
 // Before: `--policy prefetch` on a fresh profile registered every region as
 // StaticPrefetch, wrote nothing (no history to write), served thousands of real

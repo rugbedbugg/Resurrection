@@ -36,7 +36,7 @@ option(AR_BUILD_WORKLOADS "Build the synthetic benchmark workloads" ON)
 option(AR_FORCE_NO_COMPEL "Pretend compel is absent (exercises the no-restore build)" OFF)
 option(AR_FORCE_NO_SQLITE "Pretend SQLite is absent (exercises the no-profile build)" OFF)
 
-# --- optional: compel, for the Phase 2 restorer -----------------------------
+# --- optional: compel, for the restorer --------------------------------------
 # Capture (checkpoint/inspect) must never depend on this. A build without compel
 # is a supported configuration, not a degraded one: it simply has no `restore`.
 if(NOT AR_FORCE_NO_COMPEL)

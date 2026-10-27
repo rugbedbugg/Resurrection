@@ -112,7 +112,7 @@ int cmd_checkpoint(std::span<const std::string_view> args) {
                   << "  fds        " << res.fds_saved << '\n'
                   << "  verify     " << (verify ? "0 mismatches" : "skipped") << '\n';
 
-        // Phase 1 captures without disturbing the run, so let the target finish.
+        // Capture does not disturb the run, so let the target finish.
         ::ptrace(PTRACE_CONT, target, nullptr, nullptr);
         int st = 0;
         if (::waitpid(target, &st, 0) == target && WIFEXITED(st))

@@ -1,8 +1,6 @@
-// Phase 0 probe: cross-process memory read via process_vm_readv(2).
+// Probe: cross-process memory read via process_vm_readv(2).
 //
-// Design draft v2 sections referenced:
-//   - S8 step 5   (checkpoint: read eligible page contents via process_vm_readv)
-//   - S20 Phase 0 (verify process_vm_readv in the grading environment)
+// Checkpoint reads eligible page contents via process_vm_readv.
 //
 // What this checks:
 //   1. A traced/stopped child's anonymous page can be read out of its address

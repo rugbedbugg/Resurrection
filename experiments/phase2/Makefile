@@ -1,4 +1,4 @@
-# Phase 2 spikes. Not part of the CMake build: these are throwaway probes whose
+# Restorer spikes. Not part of the CMake build: these are throwaway probes whose
 # output is a written finding.
 CFLAGS  ?= -O0 -g -Wall -Wextra
 LDLIBS  ?= -lcompel

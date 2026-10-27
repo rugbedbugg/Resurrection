@@ -15,7 +15,7 @@ namespace adaptive_restore::paging {
 //
 // The page index is sorted by vaddr, so this is a binary search. A
 // linear scan would be O(pages) per fault and would dominate the very latency
-// Phase 4 is trying to measure.
+// the benchmark is trying to measure.
 class PageLocator {
 public:
     explicit PageLocator(const image::ImageReader& image);

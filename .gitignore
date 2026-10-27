@@ -7,7 +7,6 @@
 *.so.*
 
 # Experiment binaries: sources are tracked, compiled probes are not.
-# Listed per-file for phase 0 originally; the glob covers every phase.
 /experiments/phase*/probe_*
 /experiments/phase*/spike_*
 !/experiments/phase*/probe_*.c

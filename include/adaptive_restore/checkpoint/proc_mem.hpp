@@ -19,7 +19,7 @@ public:
     explicit ProcMem(pid_t pid) : pid_(pid) {}
 
     // Resize `out` to `len` and fill it with [start_vaddr, start_vaddr + len)
-    // from the target, issuing one syscall per chunk. Phase 1 is strict: a
+    // from the target, issuing one syscall per chunk. Capture is strict: a
     // failed or short read throws CheckpointError naming the vaddr, since every
     // eligible page must be fully readable.
     void read_range(std::uint64_t start_vaddr, std::size_t len, std::vector<std::byte>& out);

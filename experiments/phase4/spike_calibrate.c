@@ -1,4 +1,4 @@
-/* Phase 4 calibration spike.
+/* Cost-model calibration spike.
  *
  * The Tier 1 cost model is arithmetic over three constants:
  *   sequential_bandwidth, effective_bandwidth, mean_fault_cost

@@ -1,4 +1,4 @@
-# FindCompel — locate CRIU's compel, used for the Phase 2 restorer bootstrap.
+# FindCompel — locate CRIU's compel, used for the restorer bootstrap.
 #
 # Two distinct sets of outputs, because compel serves two very different roles:
 #

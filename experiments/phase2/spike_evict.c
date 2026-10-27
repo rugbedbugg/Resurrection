@@ -1,4 +1,4 @@
-/* Phase 2 spike 3: the self-eviction boundary.
+/* Spike 3: the self-eviction boundary.
  *
  * Restore must tear down the stub's whole address space and rebuild the image's
  * in its place. compel drives syscalls by poking a stub at ictx->syscall_ip and
