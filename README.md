@@ -75,7 +75,7 @@ include/       public headers (adaptive_restore/…)
 src/           common | checkpoint | restore | image | paging | policy | profile | bench | cli | tui
 workloads/     synthetic benchmark targets
 tests/         unit | integration
-experiments/   feasibility probes, spikes, the Tier 1 benchmark suite, raw/ (ignored output)
+experiments/   the Tier 1 benchmark suite, raw/ (ignored output)
 cmake/         find modules for the optional compel and SQLite dependencies
 flake.nix      NixOS development shell (see NIX-DEVELOPMENT.md)
 ```
@@ -166,14 +166,6 @@ a measurement. It builds in every configuration.
   the same `plan_restore()` as the restorer. The picture cannot drift from the
   behaviour.
 - `--trace` draws when demand faults arrived.
-
-### Feasibility probes
-
-The probes in `experiments/phase0` build separately:
-
-```sh
-make -C experiments/phase0 check
-```
 
 ## Requirements
 

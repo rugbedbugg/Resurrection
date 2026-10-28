@@ -42,8 +42,8 @@ struct PrefetchStats {
 // otherwise unobservable: a prefetched page is resident and reveals nothing.
 //
 // This is instrumentation, NOT policy. The planner does not know it exists and
-// nothing enables it automatically; `arctl` reads it from the environment so a
-// spike script can sweep k without a production flag existing.
+// nothing enables it automatically; `arctl` reads it from the environment so an
+// experiment can sweep k without a production flag existing.
 struct HoldoutConfig {
     std::uint32_t k = 0;      // pages withheld per region; 0 disables entirely
     std::uint64_t seed = 0;   // recorded with every result for reproducibility
